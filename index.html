@@ -116,7 +116,7 @@ const CHARACTERS = {
     },
     venom: {
         id: 'venom', name: "ヴェノム", icon: "🧪", maxHp: 36, 
-        jkpCost: 4, // ★修正: JKPコストを 0 から 4 に変更
+        jkpCost: 4, 
         scMax: 0,
         description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => { if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) { ui.print(`🧪 [パッシブ] 死毒+2`); data.opponent.addStatus(new StatusEffect('死毒', 'debuff', 2)); } },
@@ -222,7 +222,6 @@ class Game {
         if (myRole === 'p1') {
             this.p1 = new Player(myChar, true);
             this.p2 = new Player(opChar, false);
-            // ★修正: 役職名 + (YOU/OPPONENT) を設定
             this.p1.name = `${this.p1.charData.name} (YOU)`;
             this.p2.name = `${this.p2.charData.name} (OPPONENT)`;
         } else {
@@ -241,11 +240,23 @@ class Game {
         let winner = null;
         let p1BreakFail = false; let p2BreakFail = false;
 
+        // 特殊判定: スペルブレイク vs JOKER
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; p1BreakFail = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; p2BreakFail = true; }
+        // ★修正: 双方JOKERの場合は両方発動
+        else if (c1.type === CARD_TYPE.JOKER && c2.type === CARD_TYPE.JOKER) {
+            ui.print("⚡ 双方の奥義が激突！", 'c-sys');
+            // P1発動
+            this.applyCardEffect(this.p1, this.p2, c1);
+            // P2発動
+            this.applyCardEffect(this.p2, this.p1, c2);
+            // 勝敗判定は行わず終了
+            return;
+        }
         else {
+            // 通常判定
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
@@ -310,7 +321,6 @@ const ui = {
         setText('p1-name', me.name); 
         setText('p1-hp-text', `${me.hp} / ${me.charData.maxHp}`); 
         setWidth('p1-hp-bar', (me.hp / me.charData.maxHp) * 100); 
-        // ★修正: JKP / Cost
         setText('p1-jkp', `${me.jkp} / ${me.charData.jkpCost}`); 
         setText('p1-sc', me.sc); 
         setText('p1-status', getStatusTxt(me.statusList));
@@ -318,7 +328,6 @@ const ui = {
         setText('p2-name', op.name); 
         setText('p2-hp-text', `${op.hp} / ${op.charData.maxHp}`); 
         setWidth('p2-hp-bar', (op.hp / op.charData.maxHp) * 100); 
-        // ★修正: JKP / Cost
         setText('p2-jkp', `${op.jkp} / ${op.charData.jkpCost}`); 
         setText('p2-sc', op.sc); 
         setText('p2-status', getStatusTxt(op.statusList));
