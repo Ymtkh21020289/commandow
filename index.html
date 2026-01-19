@@ -7,54 +7,37 @@
         body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .screen { width: 100%; height: 100%; display: none; }
         .active-screen { display: flex; }
+        
+        /* タイトル画面 */
         #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; }
         h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         p.subtitle { color: #aaa; margin-bottom: 40px; font-size: 20px; }
         #char-list { display: flex; gap: 30px; }
         .char-select-card { width: 220px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; }
         .char-select-card:hover { transform: translateY(-10px); border-color: #00bcd4; background: #3a3a3a; }
-        .char-icon { font-size: 50px; margin-bottom: 10px; }
-        .char-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #fff; }
-        .char-stats { font-size: 14px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.6; }
+        
+        /* ゲーム画面レイアウト */
         #game-area { flex: 7; display: flex; flex-direction: column; border-right: 2px solid #444; background: radial-gradient(circle at center, #2a2a2a, #1a1a1a); position: relative; }
         
-        /* --- 修正: ログエリアの改善 --- */
-        #log-area { 
-            flex: 3; 
-            background: #111; 
-            display: flex; 
-            flex-direction: column; /* 縦並びにしてタイトルとリストを分離 */
-            border-left: 1px solid #333; 
-            height: 100%;
-        }
-        #log-title {
-            padding: 10px;
-            text-align: center;
-            color: #888;
-            border-bottom: 1px solid #555;
-            background: #1a1a1a;
-            flex-shrink: 0; /* タイトルは縮まない */
-        }
-        #logs { 
-            flex-grow: 1; /* 残りのスペースを全て使う */
-            overflow-y: auto; /* ここだけスクロールさせる */
-            padding: 10px;
-            font-family: 'Consolas', monospace; 
-            font-size: 14px; 
-            scroll-behavior: smooth;
-        }
-        /* --------------------------- */
-
+        /* ログエリア */
+        #log-area { flex: 3; background: #111; display: flex; flex-direction: column; border-left: 1px solid #333; height: 100%; }
+        #log-title { padding: 10px; text-align: center; color: #888; border-bottom: 1px solid #555; background: #1a1a1a; flex-shrink: 0; }
+        #logs { flex-grow: 1; overflow-y: auto; padding: 10px; font-family: 'Consolas', monospace; font-size: 14px; scroll-behavior: smooth; }
+        
+        /* プレイヤーゾーン・カード */
         .player-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
         #battle-zone { flex: 1.5; border-top: 1px solid #444; border-bottom: 1px solid #444; display: flex; justify-content: center; align-items: center; gap: 40px; background-color: rgba(0,0,0,0.2); }
         .status-box { width: 80%; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
         .hp-bar-bg { width: 100%; height: 15px; background: #555; border-radius: 10px; margin-top: 5px; overflow: hidden; }
         .hp-bar-fill { height: 100%; background: linear-gradient(90deg, #4caf50, #81c784); width: 100%; transition: width 0.5s ease; }
         .status-icons { margin-top: 5px; font-size: 14px; color: #ffcc00; min-height: 20px;}
+        
         .hand-container { display: flex; gap: 15px; justify-content: center; perspective: 1000px; }
         .card { width: 100px; height: 140px; background: #fff; color: #000; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; box-sizing: border-box; position: relative; cursor: pointer; transition: transform 0.2s; user-select: none; }
         .card:hover { transform: translateY(-15px) scale(1.05); z-index: 10; }
         .card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; pointer-events: none; }
+        
+        /* カード種別ごとの色 */
         .card-blank { border: 2px solid #ccc; background: linear-gradient(135deg, #fff, #f0f0f0); }
         .card-skill { border: 2px solid #ffd700; background: linear-gradient(135deg, #fff, #fffde7); }
         .card-joker { border: 2px solid #9c27b0; background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #4a148c; }
@@ -62,22 +45,65 @@
         .card-top { font-size: 18px; font-weight: bold; }
         .card-center { font-size: 32px; text-align: center; margin-top: 10px; }
         .card-name { font-size: 10px; text-align: center; color: #555; font-weight: bold; }
+
+        /* モーダル */
         #modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #777; }
+        .modal-content { background: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #777; min-width: 300px; }
+        
+        /* 汎用ボタン */
         .btn { background: #0e639c; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 4px; font-size: 16px; }
         .btn:hover { background: #1177bb; }
         .btn-atk { background: #d32f2f; }
         .btn-def { background: #1976d2; }
+
+        /* ログ装飾 */
         .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .c-p1 { color: #64b5f6; }
         .c-p2 { color: #e57373; }
         .c-sys { color: #81c784; }
         .c-dmg { color: #ffb74d; font-weight: bold; }
+        
+        /* ロード表示 */
         .loading-text { font-size: 20px; color: #00bcd4; margin-top: 20px; animation: blink 1.5s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* --- 設定ボタン & 設定モーダル --- */
+        #btn-settings {
+            position: fixed; top: 20px; right: 20px; z-index: 300;
+            font-size: 30px; cursor: pointer; opacity: 0.7; transition: opacity 0.3s;
+            text-shadow: 0 0 5px #000;
+        }
+        #btn-settings:hover { opacity: 1; transform: rotate(90deg); transition: transform 0.5s; }
+        
+        #settings-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; 
+            justify-content: center; align-items: center; z-index: 400;
+        }
+        .settings-content {
+            background: #222; padding: 30px; border-radius: 10px; border: 2px solid #555;
+            text-align: center; width: 300px;
+        }
+        .volume-control { margin: 20px 0; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .close-settings { margin-top: 20px; background: #555; }
     </style>
 </head>
 <body>
+    <div id="btn-settings" onclick="toggleSettings()">⚙️</div>
+
+    <div id="settings-modal">
+        <div class="settings-content">
+            <h2>SETTINGS</h2>
+            <div class="volume-control">
+                <label for="bgm-slider">BGM Volume: <span id="vol-value">50</span>%</label>
+                <br><br>
+                <input type="range" id="bgm-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)">
+            </div>
+            <button class="btn close-settings" onclick="toggleSettings()">CLOSE</button>
+        </div>
+    </div>
+
     <div id="title-screen" class="screen active-screen">
         <h1>ONLINE BATTLE</h1>
         <p class="subtitle" id="status-msg">キャラクターを選択してマッチング開始</p>
@@ -130,6 +156,43 @@
 
 <script>
 // ==========================================
+// 音響管理 (BGM System)
+// ==========================================
+// ★重要★: 'bgm.mp3' というファイルをサーバーのpublicフォルダに置くか、
+// 以下のURLを有効な音楽ファイルのURL（mp3等）に書き換えてください。
+const BGM_URL = 'bgm.mp3'; 
+
+const bgm = new Audio(BGM_URL);
+bgm.loop = true; // ループ再生
+
+// 初期設定のロード
+function initAudio() {
+    const savedVol = localStorage.getItem('bgm_volume');
+    const vol = savedVol !== null ? parseInt(savedVol) : 30; // デフォルト30%
+    document.getElementById('bgm-slider').value = vol;
+    updateVolume(vol);
+}
+
+function updateVolume(val) {
+    document.getElementById('vol-value').textContent = val;
+    bgm.volume = val / 100;
+    localStorage.setItem('bgm_volume', val);
+}
+
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+}
+
+function startBGM() {
+    // ブラウザの自動再生ポリシー対策のため、ユーザー操作後に呼び出す
+    bgm.play().catch(e => console.log("BGM Play Error (File not found or blocked):", e));
+}
+
+// 初期化実行
+initAudio();
+
+// ==========================================
 // 定数 & キャラクターデータ
 // ==========================================
 const CARD_TYPE = { BLANK: 'blank', SKILL: 'skill', JOKER: 'joker', SPELL_BREAK: 'break' };
@@ -144,9 +207,7 @@ const CHARACTERS = {
         jokerEffect: (me, op) => { ui.print(`👹 [JOKER] 怪力乱神!`, 'c-p1'); op.addStatus(new StatusEffect('負傷', 'debuff', 1, 20)); op.receiveDamage(2, me); }
     },
     venom: {
-        id: 'venom', name: "ヴェノム", icon: "🧪", maxHp: 36, 
-        jkpCost: 4, 
-        scMax: 0,
+        id: 'venom', name: "ヴェノム", icon: "🧪", maxHp: 36, jkpCost: 4, scMax: 0,
         description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => { if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) { ui.print(`🧪 [パッシブ] 死毒+2`); data.opponent.addStatus(new StatusEffect('死毒', 'debuff', 2)); } },
         skillEffect: (me, op, val) => { ui.print(`🌫️ [スキル] ポイズンミスト!`, 'c-p2'); op.addStatus(new StatusEffect('死毒', 'debuff', 5)); },
@@ -273,7 +334,6 @@ class Game {
         ui.print(`⚔️ バトル判定...`);
         await ui.wait(800);
 
-        // ★修正: 使用した瞬間にJKPを消費（発動成否に関わらず）
         if (c1.type === CARD_TYPE.JOKER) {
             ui.print(`${this.p1.name}はJKPを消費!`);
             this.p1.jkp -= this.p1.charData.jkpCost;
@@ -282,17 +342,16 @@ class Game {
             ui.print(`${this.p2.name}はJKPを消費!`);
             this.p2.jkp -= this.p2.charData.jkpCost;
         }
-        ui.updateStatus(this.p1, this.p2); // ゲージ反映
+        ui.updateStatus(this.p1, this.p2);
 
         let winner = null;
         let p1BreakFail = false; let p2BreakFail = false;
 
-        // 特殊判定: スペルブレイク vs JOKER
+        // 特殊判定
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; p1BreakFail = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; p2BreakFail = true; }
-        // 双方JOKERの場合は両方発動
         else if (c1.type === CARD_TYPE.JOKER && c2.type === CARD_TYPE.JOKER) {
             ui.print("⚡ 双方の奥義が激突！", 'c-sys');
             this.applyCardEffect(this.p1, this.p2, c1);
@@ -334,10 +393,7 @@ class Game {
                 } else ui.print(`🛡️ 防御成功`);
                 break;
             case CARD_TYPE.SKILL: winner.charData.skillEffect(winner, loser, card.value); break;
-            case CARD_TYPE.JOKER: 
-                // ★修正: ここでのJKP消費を削除（判定前に消費済みのため）
-                winner.charData.jokerEffect(winner, loser); 
-                break;
+            case CARD_TYPE.JOKER: winner.charData.jokerEffect(winner, loser); break;
             case CARD_TYPE.SPELL_BREAK: ui.print(`✨ スペルブレイク成功`); break;
         }
     }
@@ -351,9 +407,7 @@ const ui = {
     showGameScreen: () => { document.getElementById('title-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'flex'; },
     print: (text, type = '') => {
         const div = document.createElement('div'); div.textContent = text; div.className = 'log-entry ' + type;
-        ui.logs.appendChild(div); 
-        // ★修正: リストの一番下へスクロール
-        ui.logs.scrollTop = ui.logs.scrollHeight;
+        ui.logs.appendChild(div); ui.logs.scrollTop = ui.logs.scrollHeight;
     },
     updateStatus: (p1, p2) => {
         let me, op;
@@ -430,7 +484,7 @@ const ui = {
 };
 
 // ==========================================
-// メイン処理 (同期ズレ修正版)
+// メイン処理
 // ==========================================
 function initCharSelect() {
     const list = document.getElementById('char-list');
@@ -445,6 +499,10 @@ function initCharSelect() {
 }
 
 function joinGame(charKey) {
+    // ★ BGM開始タイミング ★
+    // ブラウザの制限により、ユーザーのアクション(Click)内で再生を開始する必要があります
+    startBGM();
+
     myCharId = charKey;
     document.getElementById('char-list').style.display = 'none';
     document.getElementById('status-msg').style.display = 'none';
@@ -527,7 +585,6 @@ async function startGame() {
 
     ui.print("=== GAME SET ===", 'c-sys');
     
-    // 引き分け判定
     if (game.p1.hp <= 0 && game.p2.hp <= 0) {
         await ui.showModal("DRAW GAME", [{ label: "タイトルへ戻る", value: "retry" }]);
     } else {
