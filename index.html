@@ -130,8 +130,6 @@ const CHARACTERS = {
         skillEffect: (me, op, val) => { 
             ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1'); 
             let total = 10; 
-            // ★修正: ランダムではなく、カードの数値(val)を使って決定する
-            // valは1〜13。これを1〜9の範囲に変換して「威力」とする
             let power = (val % 9) + 1; 
             let count = total - power; 
             ui.print(`  > 蝶付与: 威力${power} / 回数${count}`); 
@@ -483,9 +481,15 @@ async function startGame() {
     }
 
     ui.print("=== GAME SET ===", 'c-sys');
-    const winner = game.p1.hp > 0 ? game.p1 : game.p2;
-    const isWin = (winner === myPlayer);
-    await ui.showModal(isWin ? "YOU WIN!" : "YOU LOSE...", [{ label: "タイトルへ戻る", value: "retry" }]);
+    
+    // ★修正: 引き分け判定の追加
+    if (game.p1.hp <= 0 && game.p2.hp <= 0) {
+        await ui.showModal("DRAW GAME", [{ label: "タイトルへ戻る", value: "retry" }]);
+    } else {
+        const winner = game.p1.hp > 0 ? game.p1 : game.p2;
+        const isWin = (winner === myPlayer);
+        await ui.showModal(isWin ? "YOU WIN!" : "YOU LOSE...", [{ label: "タイトルへ戻る", value: "retry" }]);
+    }
     location.reload();
 }
 
