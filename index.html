@@ -2,9 +2,9 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game - Select Opponent</title>
+    <title>Online Card Battle</title>
     <style>
-        /* --- CSS --- */
+        /* CSSは前回と同じ */
         body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .screen { width: 100%; height: 100%; display: none; }
         .active-screen { display: flex; }
@@ -47,28 +47,34 @@
         .c-p2 { color: #e57373; }
         .c-sys { color: #81c784; }
         .c-dmg { color: #ffb74d; font-weight: bold; }
-        
-        /* 選択中強調 */
-        .char-select-card.selected { border-color: #ffd700; background: #555; transform: scale(0.95); }
+        .loading-text { font-size: 20px; color: #00bcd4; margin-top: 20px; animation: blink 1.5s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
     <div id="title-screen" class="screen active-screen">
-        <h1 id="title-text">PLAYER SELECT</h1>
-        <p id="subtitle-text" class="subtitle">あなたのキャラクターを選択してください</p>
+        <h1>ONLINE BATTLE</h1>
+        <p class="subtitle" id="status-msg">キャラクターを選択してマッチング開始</p>
         <div id="char-list"></div>
+        <div id="wait-msg" class="loading-text" style="display:none;">対戦相手を探しています...</div>
     </div>
     <div id="game-screen" class="screen">
         <div id="game-area">
             <div class="player-zone">
                 <div class="status-box">
-                    <div id="p2-name">Player 2</div>
+                    <div id="p2-name">Opponent</div>
                     <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
-                    <div id="p2-hp-text">HP: 36/36</div>
+                    <div id="p2-hp-text">HP: ??/??</div>
                     <div id="p2-status" class="status-icons"></div>
                     <div>JKP: <span id="p2-jkp">0</span> / SC: <span id="p2-sc">0</span></div>
                 </div>
-                <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);"></div>
+                <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);">
+                    <div class="card card-blank" style="background:#555; border-color:#777;"></div>
+                    <div class="card card-blank" style="background:#555; border-color:#777;"></div>
+                    <div class="card card-blank" style="background:#555; border-color:#777;"></div>
+                    <div class="card card-blank" style="background:#555; border-color:#777;"></div>
+                    <div class="card card-blank" style="background:#555; border-color:#777;"></div>
+                </div>
             </div>
             <div id="battle-zone">
                 <div style="position:absolute; color:#aaa; top: 10px;">BATTLE FIELD</div>
@@ -79,7 +85,7 @@
             <div class="player-zone">
                 <div class="hand-container" id="p1-hand-view"></div>
                 <div class="status-box" style="margin-top: 20px;">
-                    <div id="p1-name">Player 1</div>
+                    <div id="p1-name">You</div>
                     <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
                     <div id="p1-hp-text">HP: 20/20</div>
                     <div id="p1-status" class="status-icons"></div>
@@ -90,6 +96,8 @@
         </div>
         <div id="log-area"><div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div><div id="logs"></div></div>
     </div>
+
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
 // ==========================================
@@ -182,14 +190,33 @@ const CHARACTERS = {
 };
 
 // ==========================================
+// 通信 & ゲーム管理変数
+// ==========================================
+const socket = io();
+let myRole = ''; // 'p1' or 'p2'
+let myCharId = '';
+let opponentCharId = '';
+let game = null;
+
+// ==========================================
 // クラス定義
 // ==========================================
 class Card {
-    constructor(type) { this.type = type; this.value = 0; this.mode = CARD_MODE.ATTACK; this.initValue(); }
-    initValue() {
-        if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) this.value = Math.floor(Math.random() * 13) + 1;
-        else if (this.type === CARD_TYPE.JOKER) this.value = 14;
-        else if (this.type === CARD_TYPE.SPELL_BREAK) this.value = 0;
+    constructor(type, forcedValue = null) { 
+        this.type = type; 
+        this.value = 0; 
+        this.mode = CARD_MODE.ATTACK; 
+        this.initValue(forcedValue); 
+    }
+    initValue(forcedValue) {
+        if (forcedValue !== null) {
+            this.value = forcedValue;
+        } else {
+            // ローカル生成用
+            if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) this.value = Math.floor(Math.random() * 13) + 1;
+            else if (this.type === CARD_TYPE.JOKER) this.value = 14;
+            else if (this.type === CARD_TYPE.SPELL_BREAK) this.value = 0;
+        }
     }
 }
 
@@ -207,11 +234,10 @@ class StatusEffect {
             owner.hp -= this.val1; 
             this.val2 -= 1;
         }
-        // ★蝶 (被ダメージ増加)
         if (this.name === '蝶' && damageAmount > 0) {
             ui.print(`🦋 [蝶] 追加ダメージ ${this.val1}!`, 'c-dmg');
-            this.val2 -= 1; // 回数減少
-            return damageAmount + this.val1; // ダメージ増加
+            this.val2 -= 1;
+            return damageAmount + this.val1;
         }
         return damageAmount;
     }
@@ -231,7 +257,7 @@ class StatusEffect {
 }
 
 class Player {
-    constructor(charKey) {
+    constructor(charKey, isMe) {
         this.charData = CHARACTERS[charKey];
         this.name = this.charData.name;
         this.hp = this.charData.maxHp;
@@ -239,8 +265,10 @@ class Player {
         this.sc = 0;
         this.hand = [];
         this.statusList = [];
+        this.isMe = isMe;
     }
     drawHand() {
+        // 自分だけ手札を生成する（相手の手札は見えない/通信で受け取る）
         this.hand = [];
         this.hand.push(new Card(CARD_TYPE.BLANK));
         this.hand.push(new Card(CARD_TYPE.BLANK));
@@ -276,21 +304,31 @@ class Player {
 }
 
 class Game {
-    constructor(p1Key, p2Key) {
-        this.p1 = new Player(p1Key);
-        this.p2 = new Player(p2Key);
+    constructor(myChar, opChar) {
+        // P1を「自分」、P2を「相手」として初期化するのではなく、
+        // ロールに基づいて割り当てる
+        if (myRole === 'p1') {
+            this.p1 = new Player(myChar, true);
+            this.p2 = new Player(opChar, false);
+            this.p1.name = "YOU (P1)";
+            this.p2.name = "OPPONENT (P2)";
+        } else {
+            this.p1 = new Player(opChar, false);
+            this.p2 = new Player(myChar, true);
+            this.p1.name = "OPPONENT (P1)";
+            this.p2.name = "YOU (P2)";
+        }
         this.turn = 1;
     }
+
     isCardPlayable(player, index) {
         const card = player.hand[index];
         if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) return false;
         if (card.type === CARD_TYPE.SKILL && player.sc > 0) return false;
         return true;
     }
-    async resolveBattle(p1CardIndex, p2CardIndex) {
-        const c1 = this.p1.hand[p1CardIndex];
-        const c2 = this.p2.hand[p2CardIndex];
-        
+
+    async resolveBattle(c1, c2) {
         ui.showBattleCards(c1, c2);
         ui.print(`⚔️ バトル判定...`);
         await ui.wait(800);
@@ -303,6 +341,7 @@ class Game {
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; p1BreakFail = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; p2BreakFail = true; }
         else {
+            // 値の勝負
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
@@ -312,6 +351,7 @@ class Game {
                 else if (!p1Def && p2Def) winner = this.p2;
             }
         }
+
         if (p1BreakFail) this.p1.addStatus(new StatusEffect('ブレイク反動', 'debuff', 1));
         if (p2BreakFail) this.p2.addStatus(new StatusEffect('ブレイク反動', 'debuff', 1));
 
@@ -325,10 +365,13 @@ class Game {
             ui.print("Draw (引き分け)", 'c-sys');
         }
     }
+
     applyCardEffect(winner, loser, card) {
+        // パッシブ
         if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
              if (winner.charData.passive) winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
         }
+        
         switch (card.type) {
             case CARD_TYPE.BLANK:
                 if (card.mode === CARD_MODE.ATTACK) { 
@@ -368,6 +411,11 @@ const ui = {
         ui.logs.appendChild(div); ui.logs.scrollTop = ui.logs.scrollHeight;
     },
     updateStatus: (p1, p2) => {
+        // 常に自分が手前（p1-zone）に表示されるようにデータをマッピング
+        // ※ HTMLのIDは p1=手前(自分), p2=奥(相手)
+        let me, op;
+        if (p1.isMe) { me = p1; op = p2; } else { me = p2; op = p1; }
+
         const setText = (id, txt) => document.getElementById(id).textContent = txt;
         const setWidth = (id, percent) => document.getElementById(id).style.width = percent + '%';
         const getStatusTxt = (list) => list.map(s => {
@@ -375,18 +423,20 @@ const ui = {
             if(s.name === '蝶') return `🦋蝶(威${s.val1}/残${s.val2})`;
             return s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`;
         }).join(' ');
-        setText('p1-name', p1.name);
-        setText('p1-hp-text', `${p1.hp} / ${p1.charData.maxHp}`);
-        setWidth('p1-hp-bar', (p1.hp / p1.charData.maxHp) * 100);
-        setText('p1-jkp', p1.jkp);
-        setText('p1-sc', p1.sc); 
-        setText('p1-status', getStatusTxt(p1.statusList));
-        setText('p2-name', p2.name);
-        setText('p2-hp-text', `${p2.hp} / ${p2.charData.maxHp}`);
-        setWidth('p2-hp-bar', (p2.hp / p2.charData.maxHp) * 100);
-        setText('p2-jkp', p2.jkp);
-        setText('p2-sc', p2.sc);
-        setText('p2-status', getStatusTxt(p2.statusList));
+
+        setText('p1-name', me.name);
+        setText('p1-hp-text', `${me.hp} / ${me.charData.maxHp}`);
+        setWidth('p1-hp-bar', (me.hp / me.charData.maxHp) * 100);
+        setText('p1-jkp', me.jkp);
+        setText('p1-sc', me.sc); 
+        setText('p1-status', getStatusTxt(me.statusList));
+
+        setText('p2-name', op.name);
+        setText('p2-hp-text', `${op.hp} / ${op.charData.maxHp}`);
+        setWidth('p2-hp-bar', (op.hp / op.charData.maxHp) * 100);
+        setText('p2-jkp', op.jkp);
+        setText('p2-sc', op.sc);
+        setText('p2-status', getStatusTxt(op.statusList));
     },
     createCardElement: (card, isHidden = false, onClick = null) => {
         const div = document.createElement('div'); div.className = `card card-${card.type}`;
@@ -402,16 +452,14 @@ const ui = {
         return div;
     },
     renderHand: (player, isPlayerControlled, callback) => {
-        const container = isPlayerControlled ? document.getElementById('p1-hand-view') : document.getElementById('p2-hand-view');
+        const container = document.getElementById('p1-hand-view'); // 自分の手札のみ描画
         container.innerHTML = '';
         player.hand.forEach((card, index) => {
             let isPlayable = true;
-            if(!isPlayerControlled) isPlayable = true; 
-            else {
-                if(card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) isPlayable = false;
-                if(card.type === CARD_TYPE.SKILL && player.sc > 0) isPlayable = false;
-            }
-            const cardEl = ui.createCardElement(card, !isPlayerControlled, () => {
+            if(card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) isPlayable = false;
+            if(card.type === CARD_TYPE.SKILL && player.sc > 0) isPlayable = false;
+            
+            const cardEl = ui.createCardElement(card, false, () => {
                 if (isPlayerControlled && isPlayable && callback) callback(index);
             });
             if (isPlayerControlled && !isPlayable) cardEl.classList.add('disabled');
@@ -420,8 +468,16 @@ const ui = {
     },
     clearBattleField: () => { document.getElementById('p1-play-card').innerHTML = ''; document.getElementById('p2-play-card').innerHTML = ''; },
     showBattleCards: (c1, c2) => {
-        const b1 = document.getElementById('p1-play-card'); const b2 = document.getElementById('p2-play-card');
-        b1.innerHTML = ''; b2.innerHTML = ''; b1.appendChild(ui.createCardElement(c1)); b2.appendChild(ui.createCardElement(c2));
+        // c1をP1、c2をP2の場所に置くが、画面表示上は「自分」を下にしたい
+        // c1, c2は Game.resolveBattle で渡される順序 (P1, P2)
+        const myCard = myRole === 'p1' ? c1 : c2;
+        const opCard = myRole === 'p1' ? c2 : c1;
+
+        const b1 = document.getElementById('p1-play-card'); // 自分
+        const b2 = document.getElementById('p2-play-card'); // 相手
+        b1.innerHTML = ''; b2.innerHTML = ''; 
+        b1.appendChild(ui.createCardElement(myCard)); 
+        b2.appendChild(ui.createCardElement(opCard));
     },
     showModal: (title, buttons) => {
         return new Promise(resolve => {
@@ -429,6 +485,7 @@ const ui = {
             const btnArea = document.getElementById('modal-buttons');
             btnArea.innerHTML = '';
             document.getElementById('modal-overlay').style.display = 'flex';
+            if (buttons.length === 0) return; // ボタンなし（待機中など）
             buttons.forEach(btn => {
                 const b = document.createElement('button'); b.textContent = btn.label; b.className = `btn ${btn.class||''}`;
                 b.onclick = () => { document.getElementById('modal-overlay').style.display = 'none'; resolve(btn.value); };
@@ -436,62 +493,106 @@ const ui = {
             });
         });
     },
+    hideModal: () => { document.getElementById('modal-overlay').style.display = 'none'; },
     wait: (ms) => new Promise(r => setTimeout(r, ms))
 };
 
 // ==========================================
-// キャラ選択・開始フロー
+// メイン処理 (通信含む)
 // ==========================================
-let selectedPlayerChar = null;
-
 function initCharSelect() {
     const list = document.getElementById('char-list');
     list.innerHTML = '';
     for (const key in CHARACTERS) {
         const c = CHARACTERS[key];
         const card = document.createElement('div'); card.className = 'char-select-card';
-        card.innerHTML = `<div class="char-icon">${c.icon}</div><div class="char-name">${c.name}</div><div class="char-stats"><span class="stat-label">HP:</span> ${c.maxHp} <br><span class="stat-label">JKP:</span> ${c.jkpCost} / <span class="stat-label">SC:</span> ${c.scMax}<br>${c.description}</div><div style="margin-top:10px; font-weight:bold; color:#0e639c;">CLICK TO SELECT</div>`;
-        
-        card.onclick = () => onCharClick(key, card);
+        card.innerHTML = `<div class="char-icon">${c.icon}</div><div class="char-name">${c.name}</div><div class="char-stats"><span class="stat-label">HP:</span> ${c.maxHp} <br><span class="stat-label">JKP:</span> ${c.jkpCost} / <span class="stat-label">SC:</span> ${c.scMax}<br>${c.description}</div><div style="margin-top:10px; font-weight:bold; color:#0e639c;">CLICK TO START</div>`;
+        card.onclick = () => joinGame(key);
         list.appendChild(card);
     }
 }
 
-function onCharClick(key, cardElem) {
-    if (!selectedPlayerChar) {
-        // 1回目：プレイヤー選択
-        selectedPlayerChar = key;
-        document.getElementById('title-text').textContent = "OPPONENT SELECT";
-        document.getElementById('subtitle-text').textContent = "対戦相手を選択してください";
-        document.querySelectorAll('.char-select-card').forEach(c => c.classList.remove('selected'));
-        cardElem.classList.add('selected'); // 視覚的フィードバック（実際は画面更新で消えることが多いが、一応）
-        
-        // テキストと色を変えて、相手選択モードであることを強調
-        document.getElementById('title-screen').style.background = 'radial-gradient(circle, #440000 0%, #1a0000 100%)';
-    } else {
-        // 2回目：相手選択 -> ゲーム開始
-        startGame(selectedPlayerChar, key);
-    }
+function joinGame(charKey) {
+    myCharId = charKey;
+    document.getElementById('char-list').style.display = 'none';
+    document.getElementById('status-msg').style.display = 'none';
+    document.getElementById('wait-msg').style.display = 'block';
+    
+    // サーバーへ参加リクエスト
+    socket.emit('join_game', charKey);
 }
 
-async function startGame(playerCharKey, opponentCharKey) {
+// サーバーからのイベントハンドリング
+socket.on('waiting', (msg) => {
+    document.getElementById('wait-msg').textContent = msg;
+});
+
+socket.on('game_start', (data) => {
+    // data = { role: 'p1', opponentChar: 'venom' }
+    myRole = data.role;
+    opponentCharId = data.opponentChar;
+    startGame();
+});
+
+socket.on('opponent_left', () => {
+    alert('対戦相手が切断しました');
+    location.reload();
+});
+
+// ゲーム進行
+async function startGame() {
     ui.showGameScreen();
     ui.print("=== BATTLE START ===", 'c-sys');
     
-    const game = new Game(playerCharKey, opponentCharKey);
+    game = new Game(myCharId, opponentCharId);
+    let myPlayer = (myRole === 'p1') ? game.p1 : game.p2;
 
     while (game.p1.hp > 0 && game.p2.hp > 0) {
         game.turn++;
-        game.p1.drawHand(); game.p2.drawHand();
+        game.p1.drawHand(); game.p2.drawHand(); // 内部的にドロー
         ui.updateStatus(game.p1, game.p2);
         ui.clearBattleField();
         ui.print(`--- TURN ${game.turn} ---`, 'c-sys');
 
-        ui.renderHand(game.p2, false);
-        const p2Index = await autoSelect(game.p2, game);
-        const p1Index = await selectCardGUI(game.p1, game);
+        // カード選択フェーズ
+        const myCardIndex = await selectCardGUI(myPlayer, game);
+        const myCardData = myPlayer.hand[myCardIndex];
         
-        await game.resolveBattle(p1Index, p2Index);
+        ui.print("相手の入力を待っています...");
+        ui.showModal("通信中...", []); // ブロック用
+
+        // 自分のカードを送信
+        socket.emit('submit_card', { 
+            cardIndex: myCardIndex, 
+            cardType: myCardData.type,
+            cardValue: myCardData.value,
+            cardMode: myCardData.mode
+        });
+
+        // 相手のカードを受信待ち
+        const opponentCardData = await new Promise(resolve => {
+            socket.once('opponent_move', (data) => resolve(data));
+        });
+
+        ui.hideModal();
+
+        // 相手のカードを復元
+        // data = { cardIndex, cardType, cardValue, cardMode }
+        let opPlayer = (myRole === 'p1') ? game.p2 : game.p1;
+        // 相手の手札オブジェクトを強制的に書き換えて同期させる
+        let opCard = new Card(opponentCardData.cardType, opponentCardData.cardValue);
+        opCard.mode = opponentCardData.cardMode;
+        opPlayer.hand[opponentCardData.cardIndex] = opCard;
+
+        // バトル解決
+        const p1Index = (myRole === 'p1') ? myCardIndex : opponentCardData.cardIndex;
+        const p2Index = (myRole === 'p1') ? opponentCardData.cardIndex : myCardIndex;
+        
+        // 実際のカードオブジェクトを取得
+        const c1 = game.p1.hand[p1Index];
+        const c2 = game.p2.hand[p2Index];
+
+        await game.resolveBattle(c1, c2);
         ui.updateStatus(game.p1, game.p2);
 
         if (game.p1.hp <= 0 || game.p2.hp <= 0) break;
@@ -510,8 +611,10 @@ async function startGame(playerCharKey, opponentCharKey) {
     }
 
     ui.print("=== GAME SET ===", 'c-sys');
-    const winnerName = game.p1.hp > 0 ? game.p1.name : game.p2.name;
-    await ui.showModal(`勝者: ${winnerName}`, [{ label: "タイトルへ戻る", value: "retry" }]);
+    const winner = game.p1.hp > 0 ? game.p1 : game.p2;
+    const isWin = (winner === myPlayer);
+    
+    await ui.showModal(isWin ? "YOU WIN!" : "YOU LOSE...", [{ label: "タイトルへ戻る", value: "retry" }]);
     location.reload();
 }
 
@@ -524,20 +627,11 @@ function selectCardGUI(player, game) {
                 const mode = await ui.showModal("モード選択", [{ label: "⚔️ 攻撃", value: "attack", class: "btn-atk" }, { label: "🛡️ 防御", value: "defense", class: "btn-def" }]);
                 card.mode = (mode === 'defense') ? CARD_MODE.DEFENSE : CARD_MODE.ATTACK;
             }
+            // 選択したら手札を消す
             document.getElementById('p1-hand-view').innerHTML = ''; 
             resolve(index);
         });
     });
-}
-
-async function autoSelect(player, game) {
-    let validIndexes = [];
-    player.hand.forEach((c, i) => { if (game.isCardPlayable(player, i)) validIndexes.push(i); });
-    const choice = validIndexes[Math.floor(Math.random() * validIndexes.length)];
-    if (player.hand[choice].type === CARD_TYPE.BLANK) {
-        if (Math.random() > 0.5) player.hand[choice].mode = CARD_MODE.DEFENSE;
-    }
-    return choice;
 }
 
 initCharSelect();
