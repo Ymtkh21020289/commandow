@@ -127,7 +127,16 @@ const CHARACTERS = {
         id: 'shicho', name: "死蝶", icon: "🦋", maxHp: 24, jkpCost: 4, scMax: 0,
         description: "コンボ火力型。<br>「蝶」を相手に植え付ける。「蝶」は相手がダメージを受けるたびに追加ダメージを与える。",
         passive: null, 
-        skillEffect: (me, op, val) => { ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1'); let total = 10; let power = Math.floor(Math.random() * (total - 1)) + 1; let count = total - power; ui.print(`  > 蝶付与: 威力${power} / 回数${count}`); op.addStatus(new StatusEffect('蝶', 'debuff', power, count)); },
+        skillEffect: (me, op, val) => { 
+            ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1'); 
+            let total = 10; 
+            // ★修正: ランダムではなく、カードの数値(val)を使って決定する
+            // valは1〜13。これを1〜9の範囲に変換して「威力」とする
+            let power = (val % 9) + 1; 
+            let count = total - power; 
+            ui.print(`  > 蝶付与: 威力${power} / 回数${count}`); 
+            op.addStatus(new StatusEffect('蝶', 'debuff', power, count)); 
+        },
         jokerEffect: (me, op) => { ui.print(`⚰️ [JOKER] 葬儀`, 'c-p1'); ui.print(`  > 通常攻撃3回`, 'c-dmg'); for(let i=0; i<3; i++) { op.receiveDamage(1, me); op.receiveDamage(1, me); } let idx = op.statusList.findIndex(s => s.name === '蝶'); if (idx !== -1) { let butterfly = op.statusList[idx]; ui.print(`  > 蝶炸裂! 残り${butterfly.val1}ダメージ!`, 'c-dmg'); op.receiveDamage(butterfly.val1, me); op.statusList.splice(idx, 1); } else { ui.print(`  > 蝶はすべて飛び去っていた...`); } }
     }
 };
@@ -245,18 +254,14 @@ class Game {
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; p1BreakFail = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; p2BreakFail = true; }
-        // ★修正: 双方JOKERの場合は両方発動
+        // 双方JOKERの場合は両方発動
         else if (c1.type === CARD_TYPE.JOKER && c2.type === CARD_TYPE.JOKER) {
             ui.print("⚡ 双方の奥義が激突！", 'c-sys');
-            // P1発動
             this.applyCardEffect(this.p1, this.p2, c1);
-            // P2発動
             this.applyCardEffect(this.p2, this.p1, c2);
-            // 勝敗判定は行わず終了
             return;
         }
         else {
-            // 通常判定
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
