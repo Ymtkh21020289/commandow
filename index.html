@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game Prototype</title>
+    <title>Card Game Prototype v2</title>
     <style>
         /* 黒い画面（コンソール）風のデザイン */
         body { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Monaco', monospace; margin: 0; padding: 20px; display: flex; flex-direction: column; height: 90vh; }
@@ -11,9 +11,9 @@
         #command-input { flex: 1; background: #252526; color: white; border: 1px solid #555; padding: 10px; font-size: 16px; }
         button { background: #0e639c; color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; }
         button:hover { background: #1177bb; }
-        .p1 { color: #9cdcfe; } /* 青っぽい色 */
-        .p2 { color: #ce9178; } /* 赤っぽい色 */
-        .system { color: #6a9955; } /* 緑っぽい色 */
+        .p1 { color: #9cdcfe; } /* 青系 */
+        .p2 { color: #ce9178; } /* 赤系 */
+        .system { color: #6a9955; } /* 緑系 */
     </style>
 </head>
 <body>
@@ -27,50 +27,46 @@
 
 <script>
 // ==========================================
-// ブラウザ用 入出力システム (Node.jsの代わり)
+// ブラウザ用 入出力システム
 // ==========================================
 const logDiv = document.getElementById('game-log');
 const inputField = document.getElementById('command-input');
 let inputResolver = null;
 
-// 画面に文字を表示する関数
 function print(text, className = '') {
     const span = document.createElement('div');
     span.textContent = text;
     if (className) span.className = className;
     logDiv.appendChild(span);
-    logDiv.scrollTop = logDiv.scrollHeight; // 自動スクロール
+    logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-// ユーザーの入力を待つ関数 (Node.jsのask相当)
 function ask(question) {
     print(question, 'system');
     return new Promise(resolve => {
-        inputResolver = resolve; // 入力待ち状態にする
+        inputResolver = resolve;
         inputField.focus();
     });
 }
 
-// 送信ボタンやEnterキーで呼ばれる関数
 function submitInput() {
     if (inputResolver) {
         const val = inputField.value;
-        print(`> ${val}`); // 入力内容を表示
+        print(`> ${val}`);
         inputField.value = '';
         const resolve = inputResolver;
         inputResolver = null;
-        resolve(val); // 待っていたプログラムに入力を渡す
+        resolve(val);
     }
 }
 
-// Enterキー対応
 inputField.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submitInput();
 });
 
 
 // ==========================================
-// ここから下は ゲームのロジック (変更なし)
+// ゲームロジック (ルール修正版)
 // ==========================================
 
 const CARD_TYPE = {
@@ -153,14 +149,16 @@ const CHARACTERS = {
         },
         skillEffect: (myself, opponent, cardValue) => {
             print(`  ⚔️ [スキル] 双撃!`);
-            opponent.receiveDamage(cardValue);
-            opponent.receiveDamage(cardValue);
+            // 通常攻撃2回なので、固定ダメージ2を2回与える
+            opponent.receiveDamage(2);
+            opponent.receiveDamage(2);
             opponent.addStatus(new StatusEffect('負傷', 'debuff', 1, 1));
         },
         jokerEffect: (myself, opponent) => {
             print(`  👹 [JOKER] 怪力乱神!`);
             opponent.addStatus(new StatusEffect('負傷', 'debuff', 1, 20));
-            opponent.receiveDamage(10);
+            // ジョーカーの説明には「通常攻撃1回」とあるので、ここも2ダメージ
+            opponent.receiveDamage(2);
         }
     },
     venom: {
@@ -180,13 +178,23 @@ const CHARACTERS = {
         },
         jokerEffect: (myself, opponent) => {
             print(`  💉 [JOKER] オーバードーズ!`);
-            let poison = opponent.statusList.find(s => s.name === '死毒');
-            if (poison) {
+            // 死毒を探して処理
+            let poisonIndex = opponent.statusList.findIndex(s => s.name === '死毒');
+            
+            if (poisonIndex !== -1) {
+                let poison = opponent.statusList[poisonIndex];
                 let dmg = Math.floor(poison.val1 / 2);
                 let heal = Math.floor(dmg / 2);
-                print(`  毒吸収: ${dmg}ダメ与え、${heal}回復`);
+                
+                print(`  毒吸収: ${dmg}ダメージを与え、${heal}回復。相手の死毒を除去！`);
                 opponent.receiveDamage(dmg);
                 myself.hp += heal;
+
+                // ★修正点: 死毒を取り除く
+                opponent.statusList.splice(poisonIndex, 1);
+
+            } else {
+                print(`  (相手に毒がないため効果なし)`);
             }
         }
     }
@@ -222,8 +230,11 @@ class Player {
     }
 
     receiveDamage(amount) {
+        // 負傷などの反応
         this.statusList.forEach(s => s.onTakeDamage(this, amount));
+        // 使い切ったデバフの削除
         this.statusList = this.statusList.filter(s => !s.isExpired());
+
         this.hp -= amount;
         if (this.hp < 0) this.hp = 0;
         print(`  > ${this.name} HP: ${this.hp}`);
@@ -269,14 +280,17 @@ class Game {
         let winner = null;
         let isBreakVictory = false;
 
+        // 勝敗ロジック
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; isBreakVictory = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; isBreakVictory = true; }
         else {
+            // 数値比較
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
+                // 同値処理 (防御 > 攻撃)
                 const p1Def = (c1.mode === CARD_MODE.DEFENSE);
                 const p2Def = (c2.mode === CARD_MODE.DEFENSE);
                 if (p1Def && !p2Def) winner = this.p1;
@@ -303,6 +317,7 @@ class Game {
     }
 
     applyCardEffect(winner, loser, card) {
+        // パッシブ発火チェック (攻撃モードで勝利時のみ)
         if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
              if (winner.charData.passive) {
                  winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
@@ -312,13 +327,15 @@ class Game {
         switch (card.type) {
             case CARD_TYPE.BLANK:
                 if (card.mode === CARD_MODE.ATTACK) {
-                    print(`  👊 通常攻撃！ 威力:${card.value}`);
-                    loser.receiveDamage(card.value);
+                    // ★修正点: 通常攻撃のダメージは固定で 2
+                    print(`  👊 通常攻撃！ 威力:2`);
+                    loser.receiveDamage(2);
                 } else {
                     print(`  🛡️ 防御成功！ (効果なし)`);
                 }
                 break;
             case CARD_TYPE.SKILL:
+                // スキルはキャラ固有処理へ (バーサーカーの双撃も修正済)
                 winner.charData.skillEffect(winner, loser, card.value);
                 break;
             case CARD_TYPE.JOKER:
@@ -386,27 +403,20 @@ async function selectCard(player, game) {
 }
 
 async function main() {
-    print("=== カードゲーム バトルシミュレータ ===", 'system');
-    print("下にある入力ボックスに番号を入れてEnterを押してください。", 'system');
+    print("=== カードゲーム バトルシミュレータ v2 ===", 'system');
+    print("修正: 通常攻撃威力2固定 / ヴェノムJOKER毒除去", 'system');
     
     const game = new Game('berserker', 'venom');
 
     while (!game.isGameOver()) {
         game.startTurn();
-
-        // P1
         const p1Index = await selectCard(game.p1, game);
         print("--------------------------------");
-
-        // P2
         const p2Index = await selectCard(game.p2, game);
-
         game.resolveBattle(p1Index, p2Index);
-        
         if (game.isGameOver()) break;
-
         game.endTurn();
-        await ask('\n[何か入力してEnterで次のターンへ進む]');
+        await ask('\n[Enterで次へ]');
     }
 
     print("\n=== ゲームセット！ ===", 'system');
@@ -415,7 +425,6 @@ async function main() {
     else print("引き分け！");
 }
 
-// ゲーム開始
 main();
 
 </script>
