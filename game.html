@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Card Game Prototype</title>
+    <style>
+        /* 黒い画面（コンソール）風のデザイン */
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Monaco', monospace; margin: 0; padding: 20px; display: flex; flex-direction: column; height: 90vh; }
+        #game-log { flex: 1; overflow-y: auto; white-space: pre-wrap; margin-bottom: 10px; border: 1px solid #444; padding: 10px; }
+        #input-area { display: flex; gap: 10px; }
+        #command-input { flex: 1; background: #252526; color: white; border: 1px solid #555; padding: 10px; font-size: 16px; }
+        button { background: #0e639c; color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #1177bb; }
+        .p1 { color: #9cdcfe; } /* 青っぽい色 */
+        .p2 { color: #ce9178; } /* 赤っぽい色 */
+        .system { color: #6a9955; } /* 緑っぽい色 */
+    </style>
+</head>
+<body>
+
+    <div id="game-log"></div>
+    
+    <div id="input-area">
+        <input type="text" id="command-input" placeholder="ここに入力してEnter..." autocomplete="off">
+        <button onclick="submitInput()">送信</button>
+    </div>
+
+<script>
+// ==========================================
+// ブラウザ用 入出力システム (Node.jsの代わり)
+// ==========================================
+const logDiv = document.getElementById('game-log');
+const inputField = document.getElementById('command-input');
+let inputResolver = null;
+
+// 画面に文字を表示する関数
+function print(text, className = '') {
+    const span = document.createElement('div');
+    span.textContent = text;
+    if (className) span.className = className;
+    logDiv.appendChild(span);
+    logDiv.scrollTop = logDiv.scrollHeight; // 自動スクロール
+}
+
+// ユーザーの入力を待つ関数 (Node.jsのask相当)
+function ask(question) {
+    print(question, 'system');
+    return new Promise(resolve => {
+        inputResolver = resolve; // 入力待ち状態にする
+        inputField.focus();
+    });
+}
+
+// 送信ボタンやEnterキーで呼ばれる関数
+function submitInput() {
+    if (inputResolver) {
+        const val = inputField.value;
+        print(`> ${val}`); // 入力内容を表示
+        inputField.value = '';
+        const resolve = inputResolver;
+        inputResolver = null;
+        resolve(val); // 待っていたプログラムに入力を渡す
+    }
+}
+
+// Enterキー対応
+inputField.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitInput();
+});
+
+
+// ==========================================
+// ここから下は ゲームのロジック (変更なし)
+// ==========================================
+
+const CARD_TYPE = {
+    BLANK: 'blank',
+    SKILL: 'skill',
+    JOKER: 'joker',
+    SPELL_BREAK: 'break'
+};
+
+const CARD_MODE = {
+    ATTACK: 'attack',
+    DEFENSE: 'defense'
+};
+
+class Card {
+    constructor(type) {
+        this.type = type;
+        this.value = 0;
+        this.mode = CARD_MODE.ATTACK;
+        this.initValue();
+    }
+
+    initValue() {
+        if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) {
+            this.value = Math.floor(Math.random() * 13) + 1;
+        } else if (this.type === CARD_TYPE.JOKER) {
+            this.value = 14;
+        } else if (this.type === CARD_TYPE.SPELL_BREAK) {
+            this.value = 0;
+        }
+    }
+
+    toString() {
+        let modeStr = (this.type === CARD_TYPE.BLANK) ? `(${this.mode === CARD_MODE.ATTACK ? '攻' : '防'})` : '';
+        let valStr = (this.type === CARD_TYPE.SPELL_BREAK) ? "∞" : this.value;
+        return `[${this.type.toUpperCase()}${modeStr}:${valStr}]`;
+    }
+}
+
+class StatusEffect {
+    constructor(name, type, value1, value2 = null) {
+        this.name = name;
+        this.type = type;
+        this.val1 = value1;
+        this.val2 = value2;
+    }
+    onTurnEnd(owner) {
+        if (this.name === '死毒') {
+            const damage = 2;
+            print(`  ☠️ [毒] ${owner.name}に${damage}ダメージ (残スタック:${this.val1 - 1})`);
+            owner.receiveDamage(damage);
+            this.val1 -= 1;
+        }
+    }
+    onTakeDamage(owner, damageAmount) {
+        if (this.name === '負傷' && this.val2 > 0) {
+            print(`  🩸 [負傷] 追加ダメージ ${this.val1}! (残回数:${this.val2 - 1})`);
+            owner.hp -= this.val1;
+            this.val2 -= 1;
+        }
+    }
+    isExpired() {
+        if (this.name === '死毒') return this.val1 <= 0;
+        if (this.name === '負傷') return this.val2 <= 0;
+        return false;
+    }
+}
+
+const CHARACTERS = {
+    berserker: {
+        name: "バーサーカー",
+        maxHp: 20,
+        scMax: 0,
+        jkpCost: 8,
+        passive: (player, eventType, data) => {
+            if (eventType === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
+                print(`  🔥 [パッシブ] 闘争本能: JKP+1`);
+                player.jkp += 1;
+            }
+        },
+        skillEffect: (myself, opponent, cardValue) => {
+            print(`  ⚔️ [スキル] 双撃!`);
+            opponent.receiveDamage(cardValue);
+            opponent.receiveDamage(cardValue);
+            opponent.addStatus(new StatusEffect('負傷', 'debuff', 1, 1));
+        },
+        jokerEffect: (myself, opponent) => {
+            print(`  👹 [JOKER] 怪力乱神!`);
+            opponent.addStatus(new StatusEffect('負傷', 'debuff', 1, 20));
+            opponent.receiveDamage(10);
+        }
+    },
+    venom: {
+        name: "ヴェノム",
+        maxHp: 36,
+        scMax: 0,
+        jkpCost: 0,
+        passive: (player, eventType, data) => {
+            if (eventType === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
+                print(`  🧪 [パッシブ] 毒爪: 死毒+2`);
+                data.opponent.addStatus(new StatusEffect('死毒', 'debuff', 2));
+            }
+        },
+        skillEffect: (myself, opponent, cardValue) => {
+            print(`  🌫️ [スキル] ポイズンミスト!`);
+            opponent.addStatus(new StatusEffect('死毒', 'debuff', 5));
+        },
+        jokerEffect: (myself, opponent) => {
+            print(`  💉 [JOKER] オーバードーズ!`);
+            let poison = opponent.statusList.find(s => s.name === '死毒');
+            if (poison) {
+                let dmg = Math.floor(poison.val1 / 2);
+                let heal = Math.floor(dmg / 2);
+                print(`  毒吸収: ${dmg}ダメ与え、${heal}回復`);
+                opponent.receiveDamage(dmg);
+                myself.hp += heal;
+            }
+        }
+    }
+};
+
+class Player {
+    constructor(charKey) {
+        this.charData = CHARACTERS[charKey];
+        this.name = this.charData.name;
+        this.hp = this.charData.maxHp;
+        this.jkp = 0;
+        this.hand = [];
+        this.statusList = [];
+    }
+
+    drawHand() {
+        this.hand = [];
+        this.hand.push(new Card(CARD_TYPE.BLANK));
+        this.hand.push(new Card(CARD_TYPE.BLANK));
+        this.hand.push(new Card(CARD_TYPE.SKILL));
+        this.hand.push(new Card(CARD_TYPE.JOKER));
+        this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
+    }
+
+    addStatus(newEffect) {
+        let existing = this.statusList.find(e => e.name === newEffect.name);
+        if (existing) {
+            if (existing.name === '死毒') existing.val1 += newEffect.val1;
+            else if (existing.name === '負傷') this.statusList.push(newEffect);
+        } else {
+            this.statusList.push(newEffect);
+        }
+    }
+
+    receiveDamage(amount) {
+        this.statusList.forEach(s => s.onTakeDamage(this, amount));
+        this.statusList = this.statusList.filter(s => !s.isExpired());
+        this.hp -= amount;
+        if (this.hp < 0) this.hp = 0;
+        print(`  > ${this.name} HP: ${this.hp}`);
+    }
+}
+
+class Game {
+    constructor(p1Key, p2Key) {
+        this.p1 = new Player(p1Key);
+        this.p2 = new Player(p2Key);
+        this.turn = 1;
+    }
+
+    startTurn() {
+        print(`\n================================`, 'system');
+        print(`=== ターン ${this.turn} 開始 ===`, 'system');
+        print(`================================`, 'system');
+        print(`[P1] ${this.p1.name} (HP:${this.p1.hp}, JKP:${this.p1.jkp})`, 'p1');
+        print(`[P2] ${this.p2.name} (HP:${this.p2.hp}, JKP:${this.p2.jkp})`, 'p2');
+        this.p1.drawHand();
+        this.p2.drawHand();
+    }
+
+    isCardPlayable(player, cardIndex) {
+        const card = player.hand[cardIndex];
+        if (!card) return false;
+        
+        if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) {
+            print(`🚫 JKP不足(${player.jkp}/${player.charData.jkpCost})のためジョーカーを選択できません。`);
+            return false;
+        }
+        return true;
+    }
+
+    resolveBattle(p1CardIndex, p2CardIndex) {
+        const c1 = this.p1.hand[p1CardIndex];
+        const c2 = this.p2.hand[p2CardIndex];
+
+        print(`\n⚔️ マッチ結果:`);
+        print(`  ${this.p1.name}: ${c1.toString()}`, 'p1');
+        print(`  ${this.p2.name}: ${c2.toString()}`, 'p2');
+
+        let winner = null;
+        let isBreakVictory = false;
+
+        if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
+        else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
+        else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; isBreakVictory = true; }
+        else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; isBreakVictory = true; }
+        else {
+            if (c1.value > c2.value) winner = this.p1;
+            else if (c2.value > c1.value) winner = this.p2;
+            else {
+                const p1Def = (c1.mode === CARD_MODE.DEFENSE);
+                const p2Def = (c2.mode === CARD_MODE.DEFENSE);
+                if (p1Def && !p2Def) winner = this.p1;
+                else if (!p1Def && p2Def) winner = this.p2;
+                else winner = null;
+            }
+        }
+
+        if (winner) {
+            const loser = (winner === this.p1) ? this.p2 : this.p1;
+            const winCard = (winner === this.p1) ? c1 : c2;
+            
+            print(`🏅 勝者: ${winner.name}`, 'system');
+
+            if (isBreakVictory) {
+                print(`  ⚡ スペルブレイク失敗！ ${loser.name}は被ダメージが増加(1)！`);
+                loser.receiveDamage(1); 
+            }
+
+            this.applyCardEffect(winner, loser, winCard);
+        } else {
+            print("Draw (引き分け - 何も起こらない)");
+        }
+    }
+
+    applyCardEffect(winner, loser, card) {
+        if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
+             if (winner.charData.passive) {
+                 winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
+             }
+        }
+
+        switch (card.type) {
+            case CARD_TYPE.BLANK:
+                if (card.mode === CARD_MODE.ATTACK) {
+                    print(`  👊 通常攻撃！ 威力:${card.value}`);
+                    loser.receiveDamage(card.value);
+                } else {
+                    print(`  🛡️ 防御成功！ (効果なし)`);
+                }
+                break;
+            case CARD_TYPE.SKILL:
+                winner.charData.skillEffect(winner, loser, card.value);
+                break;
+            case CARD_TYPE.JOKER:
+                winner.jkp -= winner.charData.jkpCost;
+                winner.charData.jokerEffect(winner, loser);
+                break;
+            case CARD_TYPE.SPELL_BREAK:
+                print(`  ✨ スペルブレイク成功！ (効果なし)`);
+                break;
+        }
+    }
+
+    endTurn() {
+        print(`\n--- ターン終了処理 ---`);
+        this.p1.jkp += 1;
+        this.p2.jkp += 1;
+        [this.p1, this.p2].forEach(p => {
+            p.statusList.forEach(s => s.onTurnEnd(p));
+            p.statusList = p.statusList.filter(s => !s.isExpired());
+        });
+        this.turn++;
+    }
+
+    isGameOver() {
+        return this.p1.hp <= 0 || this.p2.hp <= 0;
+    }
+}
+
+// --- メインループ ---
+async function selectCard(player, game) {
+    while (true) {
+        print(`\n【${player.name} のターン】`, player === game.p1 ? 'p1' : 'p2');
+        print("手札:");
+        player.hand.forEach((card, index) => {
+            let note = "";
+            if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) {
+                note = " (× JKP不足)";
+            }
+            print(`  ${index}: ${card.toString()}${note}`);
+        });
+
+        const answer = await ask(`> カードを選んでください (0-4): `);
+        const index = parseInt(answer);
+
+        if (isNaN(index) || index < 0 || index >= player.hand.length) {
+            print("⚠️ 無効な番号です。もう一度入力してください。");
+            continue;
+        }
+
+        if (!game.isCardPlayable(player, index)) {
+            continue; 
+        }
+
+        const selectedCard = player.hand[index];
+        if (selectedCard.type === CARD_TYPE.BLANK) {
+            const modeAns = await ask(`> モードを選択してください (a:攻撃 / d:防御): `);
+            if (modeAns.toLowerCase() === 'd') {
+                selectedCard.mode = CARD_MODE.DEFENSE;
+            } else {
+                selectedCard.mode = CARD_MODE.ATTACK;
+            }
+        }
+        return index;
+    }
+}
+
+async function main() {
+    print("=== カードゲーム バトルシミュレータ ===", 'system');
+    print("下にある入力ボックスに番号を入れてEnterを押してください。", 'system');
+    
+    const game = new Game('berserker', 'venom');
+
+    while (!game.isGameOver()) {
+        game.startTurn();
+
+        // P1
+        const p1Index = await selectCard(game.p1, game);
+        print("--------------------------------");
+
+        // P2
+        const p2Index = await selectCard(game.p2, game);
+
+        game.resolveBattle(p1Index, p2Index);
+        
+        if (game.isGameOver()) break;
+
+        game.endTurn();
+        await ask('\n[何か入力してEnterで次のターンへ進む]');
+    }
+
+    print("\n=== ゲームセット！ ===", 'system');
+    if (game.p1.hp > 0) print(`勝者: ${game.p1.name} !`, 'p1');
+    else if (game.p2.hp > 0) print(`勝者: ${game.p2.name} !`, 'p2');
+    else print("引き分け！");
+}
+
+// ゲーム開始
+main();
+
+</script>
+</body>
+</html>
