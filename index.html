@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game Battle GUI - Char Select</title>
+    <title>Card Battle - SC実装版</title>
     <style>
         /* --- 全体のレイアウト --- */
         body {
@@ -16,14 +16,8 @@
         }
 
         /* --- 画面切り替え用 --- */
-        .screen {
-            width: 100%;
-            height: 100%;
-            display: none; /* 初期状態は非表示 */
-        }
-        .active-screen {
-            display: flex;
-        }
+        .screen { width: 100%; height: 100%; display: none; }
+        .active-screen { display: flex; }
 
         /* --- タイトル・キャラ選択画面 --- */
         #title-screen {
@@ -31,29 +25,24 @@
             justify-content: center;
             align-items: center;
             background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%);
-            z-index: 200;
         }
         h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         p.subtitle { color: #aaa; margin-bottom: 40px; }
         
-        #char-list {
-            display: flex;
-            gap: 30px;
-        }
+        #char-list { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 1000px; }
         
         .char-select-card {
-            width: 220px;
+            width: 200px;
             background: #333;
             border: 2px solid #555;
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px;
             cursor: pointer;
             transition: all 0.3s;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
         }
         .char-select-card:hover {
             transform: translateY(-10px);
@@ -61,17 +50,13 @@
             box-shadow: 0 0 20px rgba(0, 188, 212, 0.4);
             background: #3a3a3a;
         }
-        .char-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #fff; }
-        .char-stats { font-size: 14px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.6; }
-        .stat-label { color: #888; font-size: 12px; }
-        .char-icon { font-size: 50px; margin-bottom: 10px; }
+        .char-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #fff; }
+        .char-stats { font-size: 13px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.5; }
+        .stat-label { color: #888; font-size: 11px; }
+        .char-icon { font-size: 40px; margin-bottom: 5px; }
 
-        /* --- ゲーム画面 (前回と同じ) --- */
-        #game-screen {
-            display: none; /* JSでflexにする */
-            width: 100%;
-            height: 100%;
-        }
+        /* --- ゲーム画面 --- */
+        #game-screen { width: 100%; height: 100%; }
         
         #game-area {
             flex: 7;
@@ -119,7 +104,12 @@
             border-radius: 8px;
             margin-bottom: 10px;
             text-align: center;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
         }
+        .status-info { width: 100%; }
+        
         .hp-bar-bg {
             width: 100%;
             height: 15px;
@@ -138,7 +128,19 @@
             margin-top: 5px;
             font-size: 14px;
             color: #ffcc00;
+            min-height: 20px;
         }
+
+        /* リソース表示 (JKP / SC) */
+        .resource-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        .sc-active { color: #ff5555; font-weight: bold; }
+        .sc-ready { color: #00bcd4; }
 
         .hand-container {
             display: flex;
@@ -166,7 +168,30 @@
         }
 
         .card:hover { transform: translateY(-15px) scale(1.05); z-index: 10; }
-        .card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; pointer-events: none; }
+        
+        /* 使用不可カード */
+        .card.disabled {
+            filter: grayscale(100%) brightness(0.6);
+            cursor: not-allowed;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        /* SCやコスト不足の理由表示 */
+        .card-disabled-reason {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            color: red;
+            font-weight: bold;
+            font-size: 20px;
+            border: 2px solid red;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(0,0,0,0.8);
+            white-space: nowrap;
+            display: none;
+        }
+        .card.disabled .card-disabled-reason { display: block; }
 
         .card-blank { border: 2px solid #ccc; background: linear-gradient(135deg, #fff, #f0f0f0); }
         .card-skill { border: 2px solid #ffd700; background: linear-gradient(135deg, #fff, #fffde7); }
@@ -221,11 +246,16 @@
         <div id="game-area">
             <div class="player-zone" id="p2-zone">
                 <div class="status-box">
-                    <div id="p2-name">Player 2</div>
-                    <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
-                    <div id="p2-hp-text">HP: 36/36</div>
-                    <div id="p2-status" class="status-icons"></div>
-                    <div>JKP: <span id="p2-jkp">0</span></div>
+                    <div class="status-info">
+                        <div id="p2-name">Player 2</div>
+                        <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
+                        <div id="p2-hp-text">HP: 36/36</div>
+                        <div class="resource-row">
+                            <div>JKP: <span id="p2-jkp">0</span></div>
+                            <div id="p2-sc-area">SC: <span id="p2-sc">0</span></div>
+                        </div>
+                        <div id="p2-status" class="status-icons"></div>
+                    </div>
                 </div>
                 <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);"></div>
             </div>
@@ -240,11 +270,16 @@
             <div class="player-zone" id="p1-zone">
                 <div class="hand-container" id="p1-hand-view"></div>
                 <div class="status-box" style="margin-top: 20px;">
-                    <div id="p1-name">Player 1</div>
-                    <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
-                    <div id="p1-hp-text">HP: 20/20</div>
-                    <div id="p1-status" class="status-icons"></div>
-                    <div>JKP: <span id="p1-jkp">0</span></div>
+                    <div class="status-info">
+                        <div id="p1-name">Player 1</div>
+                        <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
+                        <div id="p1-hp-text">HP: 20/20</div>
+                        <div class="resource-row">
+                            <div>JKP: <span id="p1-jkp">0</span></div>
+                            <div id="p1-sc-area">SC: <span id="p1-sc">0</span></div>
+                        </div>
+                        <div id="p1-status" class="status-icons"></div>
+                    </div>
                 </div>
             </div>
 
@@ -276,6 +311,7 @@ const CHARACTERS = {
         icon: "👹",
         maxHp: 20,
         jkpCost: 8,
+        scMax: 2, // スキルクールタイム
         description: "攻撃特化型。<br>HPは低いが、通常攻撃の威力が高く、ジョーカーで強力な継続ダメージを与える。",
         passive: (p, type, data) => {
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
@@ -300,6 +336,7 @@ const CHARACTERS = {
         icon: "🧪",
         maxHp: 36,
         jkpCost: 0,
+        scMax: 3,
         description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => {
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
@@ -324,6 +361,70 @@ const CHARACTERS = {
                 op.statusList.splice(idx, 1);
             }
         }
+    },
+    vampire: {
+        id: 'vampire',
+        name: "ヴァンパイア",
+        icon: "🦇",
+        maxHp: 25,
+        jkpCost: 6,
+        scMax: 3,
+        description: "吸血型。<br>敵の体力を奪い、自分のHPを回復する。しぶとく戦うことができる。",
+        passive: (p, type, data) => {
+            if (type === 'attack_hit') {
+                ui.print(`🦇 [パッシブ] 吸血: HP+1回復`);
+                p.hp += 1;
+                if(p.hp > p.charData.maxHp) p.hp = p.charData.maxHp;
+            }
+        },
+        skillEffect: (me, op, val) => {
+            ui.print(`🩸 [スキル] ブラッドファング!`, 'c-p1');
+            op.receiveDamage(3);
+            me.hp += 3;
+            if(me.hp > me.charData.maxHp) me.hp = me.charData.maxHp;
+        },
+        jokerEffect: (me, op) => {
+            ui.print(`🌑 [JOKER] ナイトメア・ドレイン!`, 'c-p1');
+            op.receiveDamage(6);
+            me.hp += 6;
+            if(me.hp > me.charData.maxHp) me.hp = me.charData.maxHp;
+        }
+    },
+    gambler: {
+        id: 'gambler',
+        name: "ギャンブラー",
+        icon: "🎲",
+        maxHp: 28,
+        jkpCost: 4,
+        scMax: 2,
+        description: "運任せ型。<br>スキルやJOKERの効果がランダムで変化する。一発逆転もあれば自爆もある。",
+        passive: (p, type, data) => {
+            if (type === 'attack_hit' && Math.random() < 0.3) {
+                ui.print(`🎲 [パッシブ] ラッキー! JKP+2`);
+                p.jkp += 2;
+            }
+        },
+        skillEffect: (me, op, val) => {
+            let dice = Math.floor(Math.random() * 6) + 1;
+            ui.print(`🎲 [スキル] ダイスロール: [${dice}]`, 'c-p1');
+            if (dice <= 3) {
+                ui.print(`  > 失敗... 1ダメージ`);
+                op.receiveDamage(1);
+            } else {
+                ui.print(`  > 成功！ ${dice}ダメージ！`);
+                op.receiveDamage(dice);
+            }
+        },
+        jokerEffect: (me, op) => {
+            ui.print(`🎰 [JOKER] ジャックポット・チャンス!`, 'c-p1');
+            if (Math.random() < 0.5) {
+                ui.print(`  > 大当たり!!! 20ダメージ!!!`, 'c-dmg');
+                op.receiveDamage(20);
+            } else {
+                ui.print(`  > ハズレ... 自分に5ダメージ`, 'c-dmg');
+                me.receiveDamage(5);
+            }
+        }
     }
 };
 
@@ -333,13 +434,10 @@ const CHARACTERS = {
 const ui = {
     logs: document.getElementById('logs'),
     
-    // 画面切り替え
     showGameScreen: () => {
         document.getElementById('title-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'flex';
     },
-
-    // ログなど
     print: (text, type = '') => {
         const div = document.createElement('div');
         div.textContent = text;
@@ -347,27 +445,37 @@ const ui = {
         ui.logs.appendChild(div);
         ui.logs.scrollTop = ui.logs.scrollHeight;
     },
-
-    // ステータス更新
     updateStatus: (p1, p2) => {
-        const setText = (id, txt) => document.getElementById(id).textContent = txt;
-        const setWidth = (id, percent) => document.getElementById(id).style.width = percent + '%';
-        const getStatusTxt = (list) => list.map(s => s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`).join(' ');
+        const setTxt = (id, txt) => document.getElementById(id).textContent = txt;
+        const setW = (id, per) => document.getElementById(id).style.width = per + '%';
+        const getSts = (l) => l.map(s => s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`).join(' ');
 
-        setText('p1-name', p1.name);
-        setText('p1-hp-text', `${p1.hp} / ${p1.charData.maxHp}`);
-        setWidth('p1-hp-bar', (p1.hp / p1.charData.maxHp) * 100);
-        setText('p1-jkp', p1.jkp);
-        setText('p1-status', getStatusTxt(p1.statusList));
+        // P1
+        setTxt('p1-name', p1.name);
+        setTxt('p1-hp-text', `${p1.hp} / ${p1.charData.maxHp}`);
+        setW('p1-hp-bar', (p1.hp / p1.charData.maxHp) * 100);
+        setTxt('p1-jkp', p1.jkp);
+        setTxt('p1-status', getSts(p1.statusList));
+        
+        // P1 SC表示
+        const p1ScSpan = document.getElementById('p1-sc');
+        p1ScSpan.textContent = `${p1.sc} / ${p1.charData.scMax}`;
+        p1ScSpan.className = p1.sc > 0 ? 'sc-active' : 'sc-ready';
 
-        setText('p2-name', p2.name);
-        setText('p2-hp-text', `${p2.hp} / ${p2.charData.maxHp}`);
-        setWidth('p2-hp-bar', (p2.hp / p2.charData.maxHp) * 100);
-        setText('p2-jkp', p2.jkp);
-        setText('p2-status', getStatusTxt(p2.statusList));
+        // P2
+        setTxt('p2-name', p2.name);
+        setTxt('p2-hp-text', `${p2.hp} / ${p2.charData.maxHp}`);
+        setW('p2-hp-bar', (p2.hp / p2.charData.maxHp) * 100);
+        setTxt('p2-jkp', p2.jkp);
+        setTxt('p2-status', getSts(p2.statusList));
+
+        // P2 SC表示
+        const p2ScSpan = document.getElementById('p2-sc');
+        p2ScSpan.textContent = `${p2.sc} / ${p2.charData.scMax}`;
+        p2ScSpan.className = p2.sc > 0 ? 'sc-active' : 'sc-ready';
     },
 
-    createCardElement: (card, isHidden = false, onClick = null) => {
+    createCardElement: (card, isHidden = false, disabledReason = null, onClick = null) => {
         const div = document.createElement('div');
         div.className = `card card-${card.type}`;
         if (isHidden) {
@@ -380,7 +488,14 @@ const ui = {
         if (card.type === 'break') { icon = '🛑'; label = 'BREAK'; }
         if (card.mode === 'defense') modeMark = '🛡️';
 
-        div.innerHTML = `<div class="card-top">${card.value === 0 ? '∞' : card.value}</div><div class="card-center">${icon}${modeMark}</div><div class="card-name">${label}</div>`;
+        let reasonHtml = disabledReason ? `<div class="card-disabled-reason">${disabledReason}</div>` : '';
+
+        div.innerHTML = `
+            <div class="card-top">${card.value === 0 ? '∞' : card.value}</div>
+            <div class="card-center">${icon}${modeMark}</div>
+            <div class="card-name">${label}</div>
+            ${reasonHtml}
+        `;
         if (onClick) div.onclick = onClick;
         return div;
     },
@@ -389,11 +504,24 @@ const ui = {
         const container = isPlayerControlled ? document.getElementById('p1-hand-view') : document.getElementById('p2-hand-view');
         container.innerHTML = '';
         player.hand.forEach((card, index) => {
-            const isPlayable = isPlayerControlled ? !(card.type === 'joker' && player.jkp < player.charData.jkpCost) : true;
-            const cardEl = ui.createCardElement(card, !isPlayerControlled, () => {
-                if (isPlayerControlled && isPlayable && callback) callback(index);
+            // 使用可能チェック
+            let canPlay = true;
+            let reason = null;
+
+            if (isPlayerControlled) {
+                if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) {
+                    canPlay = false; reason = "JKP不足";
+                }
+                if (card.type === CARD_TYPE.SKILL && player.sc > 0) {
+                    canPlay = false; reason = "SC中";
+                }
+            }
+
+            const cardEl = ui.createCardElement(card, !isPlayerControlled, reason, () => {
+                if (isPlayerControlled && canPlay && callback) callback(index);
             });
-            if (isPlayerControlled && !isPlayable) cardEl.classList.add('disabled');
+            
+            if (isPlayerControlled && !canPlay) cardEl.classList.add('disabled');
             container.appendChild(cardEl);
         });
     },
@@ -428,7 +556,7 @@ const ui = {
 };
 
 // ==========================================
-// ゲームクラス定義 (ロジック)
+// ゲームクラス & ロジック
 // ==========================================
 class Card {
     constructor(type) {
@@ -470,6 +598,7 @@ class Player {
         this.name = this.charData.name;
         this.hp = this.charData.maxHp;
         this.jkp = 0;
+        this.sc = 0; // スキルクールタイム現在値
         this.hand = [];
         this.statusList = [];
     }
@@ -504,6 +633,9 @@ class Game {
     }
     isCardPlayable(player, index) {
         const card = player.hand[index];
+        // SCチェック
+        if (card.type === CARD_TYPE.SKILL && player.sc > 0) return false;
+        // JKPチェック
         if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) return false;
         return true;
     }
@@ -546,9 +678,19 @@ class Game {
                 if (card.mode === CARD_MODE.ATTACK) { ui.print(`👊 通常攻撃 (威力:2)`, 'c-dmg'); loser.receiveDamage(2); }
                 else ui.print(`🛡️ 防御成功`);
                 break;
-            case CARD_TYPE.SKILL: winner.charData.skillEffect(winner, loser, card.value); break;
-            case CARD_TYPE.JOKER: winner.jkp -= winner.charData.jkpCost; winner.charData.jokerEffect(winner, loser); break;
-            case CARD_TYPE.SPELL_BREAK: ui.print(`✨ スペルブレイク成功`); break;
+            case CARD_TYPE.SKILL:
+                // スキル発動成功時、SC発生
+                winner.charData.skillEffect(winner, loser, card.value);
+                winner.sc = winner.charData.scMax;
+                ui.print(`  ⏳ スキルクールダウン発生 (${winner.sc}ターン)`, 'c-sys');
+                break;
+            case CARD_TYPE.JOKER: 
+                winner.jkp -= winner.charData.jkpCost; 
+                winner.charData.jokerEffect(winner, loser); 
+                break;
+            case CARD_TYPE.SPELL_BREAK: 
+                ui.print(`✨ スペルブレイク成功`); 
+                break;
         }
     }
 }
@@ -556,12 +698,8 @@ class Game {
 // ==========================================
 // メイン制御
 // ==========================================
-
-// 1. キャラクター選択画面の生成
 function initCharSelect() {
     const list = document.getElementById('char-list');
-    
-    // 定義されているキャラをループしてボタン作成
     for (const key in CHARACTERS) {
         const c = CHARACTERS[key];
         const card = document.createElement('div');
@@ -570,8 +708,9 @@ function initCharSelect() {
             <div class="char-icon">${c.icon}</div>
             <div class="char-name">${c.name}</div>
             <div class="char-stats">
-                <span class="stat-label">HP:</span> ${c.maxHp} <br>
-                <span class="stat-label">JKP Cost:</span> ${c.jkpCost} <br>
+                <span class="stat-label">HP:</span> ${c.maxHp} / 
+                <span class="stat-label">JKP:</span> ${c.jkpCost} <br>
+                <span class="stat-label">SC:</span> ${c.scMax}ターン<br>
                 ${c.description}
             </div>
             <div style="margin-top:10px; font-weight:bold; color:#0e639c;">CLICK TO START</div>
@@ -581,19 +720,14 @@ function initCharSelect() {
     }
 }
 
-// 2. ゲーム開始処理
 async function startGame(playerCharKey) {
-    // 相手を自動決定（選ばなかった方）
     const allKeys = Object.keys(CHARACTERS);
-    const opponentKey = allKeys.find(k => k !== playerCharKey) || 'berserker'; // 万が一のため
-
-    // 画面切り替え
+    const opponentKey = allKeys.find(k => k !== playerCharKey) || 'berserker';
     ui.showGameScreen();
     ui.print("=== BATTLE START ===", 'c-sys');
     
     const game = new Game(playerCharKey, opponentKey);
 
-    // ゲームループ開始
     while (game.p1.hp > 0 && game.p2.hp > 0) {
         game.turn++;
         game.p1.drawHand(); game.p2.drawHand();
@@ -601,21 +735,22 @@ async function startGame(playerCharKey) {
         ui.clearBattleField();
         ui.print(`--- TURN ${game.turn} ---`, 'c-sys');
 
-        // P2思考（ランダム）
         ui.renderHand(game.p2, false);
         const p2Index = await autoSelect(game.p2, game);
-
-        // P1選択待ち
         const p1Index = await selectCardGUI(game.p1, game);
         
-        // バトル解決
         await game.resolveBattle(p1Index, p2Index);
         ui.updateStatus(game.p1, game.p2);
 
         if (game.p1.hp <= 0 || game.p2.hp <= 0) break;
 
-        // ターン終了
+        // ターン終了時、リソース回復 & SC減少
         game.p1.jkp++; game.p2.jkp++;
+        
+        // SC減少処理
+        if(game.p1.sc > 0) game.p1.sc--;
+        if(game.p2.sc > 0) game.p2.sc--;
+
         [game.p1, game.p2].forEach(p => {
             p.statusList.forEach(s => s.onTurnEnd(p));
             p.statusList = p.statusList.filter(s => !s.isExpired());
@@ -631,7 +766,6 @@ async function startGame(playerCharKey) {
     location.reload();
 }
 
-// プレイヤー用入力待ち
 function selectCardGUI(player, game) {
     return new Promise(resolve => {
         ui.print(`あなたのターン: カードを選んでください`, 'c-sys');
@@ -650,10 +784,13 @@ function selectCardGUI(player, game) {
     });
 }
 
-// コンピュータ用思考
 async function autoSelect(player, game) {
     let validIndexes = [];
     player.hand.forEach((c, i) => { if (game.isCardPlayable(player, i)) validIndexes.push(i); });
+    
+    // 手詰まり防止（万が一プレイできるカードがない場合、仕方なく0番目を選ぶ※通常ありえないが安全策）
+    if (validIndexes.length === 0) validIndexes.push(0);
+
     const choice = validIndexes[Math.floor(Math.random() * validIndexes.length)];
     if (player.hand[choice].type === CARD_TYPE.BLANK) {
         if (Math.random() > 0.5) player.hand[choice].mode = CARD_MODE.DEFENSE;
@@ -661,9 +798,7 @@ async function autoSelect(player, game) {
     return choice;
 }
 
-// 起動
 initCharSelect();
-
 </script>
 </body>
 </html>
