@@ -9,13 +9,34 @@
         .active-screen { display: flex; }
         
         /* タイトル画面 */
-        #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; }
+        #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; position: relative; }
         h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         p.subtitle { color: #aaa; margin-bottom: 40px; font-size: 20px; }
         #char-list { display: flex; gap: 30px; }
         .char-select-card { width: 220px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; }
         .char-select-card:hover { transform: translateY(-10px); border-color: #00bcd4; background: #3a3a3a; }
         
+        /* --- 追加: 接続人数表示 --- */
+        #online-counter {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 18px;
+            color: #00bcd4;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #00bcd4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .live-indicator {
+            width: 10px; height: 10px; background-color: #00ff00; border-radius: 50%;
+            box-shadow: 0 0 8px #00ff00;
+        }
+        /* ----------------------- */
+
         /* ゲーム画面レイアウト */
         #game-area { flex: 7; display: flex; flex-direction: column; border-right: 2px solid #444; background: radial-gradient(circle at center, #2a2a2a, #1a1a1a); position: relative; }
         
@@ -105,6 +126,11 @@
     </div>
 
     <div id="title-screen" class="screen active-screen">
+        <div id="online-counter">
+            <div class="live-indicator"></div>
+            <span>Online: <span id="online-count-num">-</span></span>
+        </div>
+
         <h1>ONLINE BATTLE</h1>
         <p class="subtitle" id="status-msg">キャラクターを選択してマッチング開始</p>
         <div id="char-list"></div>
@@ -158,17 +184,13 @@
 // ==========================================
 // 音響管理 (BGM System)
 // ==========================================
-// ★重要★: 'bgm.mp3' というファイルをサーバーのpublicフォルダに置くか、
-// 以下のURLを有効な音楽ファイルのURL（mp3等）に書き換えてください。
-const BGM_URL = 'battle.mp3'; 
-
+const BGM_URL = 'bgm.mp3'; 
 const bgm = new Audio(BGM_URL);
-bgm.loop = true; // ループ再生
+bgm.loop = true; 
 
-// 初期設定のロード
 function initAudio() {
     const savedVol = localStorage.getItem('bgm_volume');
-    const vol = savedVol !== null ? parseInt(savedVol) : 30; // デフォルト30%
+    const vol = savedVol !== null ? parseInt(savedVol) : 30; 
     document.getElementById('bgm-slider').value = vol;
     updateVolume(vol);
 }
@@ -185,11 +207,9 @@ function toggleSettings() {
 }
 
 function startBGM() {
-    // ブラウザの自動再生ポリシー対策のため、ユーザー操作後に呼び出す
-    bgm.play().catch(e => console.log("BGM Play Error (File not found or blocked):", e));
+    bgm.play().catch(e => console.log("BGM Play Error:", e));
 }
 
-// 初期化実行
 initAudio();
 
 // ==========================================
@@ -238,6 +258,11 @@ let myCharId = '';
 let opponentCharId = '';
 let game = null;
 let opponentMoveMailbox = {}; 
+
+// ★ 追加: 接続人数の更新受信 ★
+socket.on('update_count', (count) => {
+    document.getElementById('online-count-num').textContent = count;
+});
 
 // ==========================================
 // クラス定義
@@ -499,8 +524,6 @@ function initCharSelect() {
 }
 
 function joinGame(charKey) {
-    // ★ BGM開始タイミング ★
-    // ブラウザの制限により、ユーザーのアクション(Click)内で再生を開始する必要があります
     startBGM();
 
     myCharId = charKey;
