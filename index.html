@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Online Card Battle (Fixed)</title>
+    <title>Online Card Battle</title>
     <style>
         /* CSSは変更なし */
         body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -66,7 +66,7 @@
                     <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
                     <div id="p2-hp-text">HP: ??/??</div>
                     <div id="p2-status" class="status-icons"></div>
-                    <div>JKP: <span id="p2-jkp">0</span> / SC: <span id="p2-sc">0</span></div>
+                    <div>JKP: <span id="p2-jkp">0 / 0</span> | SC: <span id="p2-sc">0</span></div>
                 </div>
                 <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);">
                     <div class="card card-blank" style="background:#555; border-color:#777;"></div>
@@ -89,7 +89,7 @@
                     <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
                     <div id="p1-hp-text">HP: 20/20</div>
                     <div id="p1-status" class="status-icons"></div>
-                    <div>JKP: <span id="p1-jkp">0</span> / SC: <span id="p1-sc">0</span></div>
+                    <div>JKP: <span id="p1-jkp">0 / 0</span> | SC: <span id="p1-sc">0</span></div>
                 </div>
             </div>
             <div id="modal-overlay"><div class="modal-content"><h3 id="modal-title"></h3><div id="modal-buttons"></div></div></div>
@@ -115,7 +115,9 @@ const CHARACTERS = {
         jokerEffect: (me, op) => { ui.print(`👹 [JOKER] 怪力乱神!`, 'c-p1'); op.addStatus(new StatusEffect('負傷', 'debuff', 1, 20)); op.receiveDamage(2, me); }
     },
     venom: {
-        id: 'venom', name: "ヴェノム", icon: "🧪", maxHp: 36, jkpCost: 0, scMax: 0,
+        id: 'venom', name: "ヴェノム", icon: "🧪", maxHp: 36, 
+        jkpCost: 4, // ★修正: JKPコストを 0 から 4 に変更
+        scMax: 0,
         description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => { if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) { ui.print(`🧪 [パッシブ] 死毒+2`); data.opponent.addStatus(new StatusEffect('死毒', 'debuff', 2)); } },
         skillEffect: (me, op, val) => { ui.print(`🌫️ [スキル] ポイズンミスト!`, 'c-p2'); op.addStatus(new StatusEffect('死毒', 'debuff', 5)); },
@@ -138,8 +140,6 @@ let myRole = '';
 let myCharId = '';
 let opponentCharId = '';
 let game = null;
-
-// ★重要修正：相手のカードを保存しておく「郵便受け」
 let opponentMoveMailbox = {}; 
 
 // ==========================================
@@ -222,11 +222,14 @@ class Game {
         if (myRole === 'p1') {
             this.p1 = new Player(myChar, true);
             this.p2 = new Player(opChar, false);
-            this.p1.name = "YOU (P1)"; this.p2.name = "OPPONENT (P2)";
+            // ★修正: 役職名 + (YOU/OPPONENT) を設定
+            this.p1.name = `${this.p1.charData.name} (YOU)`;
+            this.p2.name = `${this.p2.charData.name} (OPPONENT)`;
         } else {
             this.p1 = new Player(opChar, false);
             this.p2 = new Player(myChar, true);
-            this.p1.name = "OPPONENT (P1)"; this.p2.name = "YOU (P2)";
+            this.p1.name = `${this.p1.charData.name} (OPPONENT)`;
+            this.p2.name = `${this.p2.charData.name} (YOU)`;
         }
         this.turn = 1;
     }
@@ -303,8 +306,22 @@ const ui = {
             if(s.name === '蝶') return `🦋蝶(威${s.val1}/残${s.val2})`;
             return s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`;
         }).join(' ');
-        setText('p1-name', me.name); setText('p1-hp-text', `${me.hp} / ${me.charData.maxHp}`); setWidth('p1-hp-bar', (me.hp / me.charData.maxHp) * 100); setText('p1-jkp', me.jkp); setText('p1-sc', me.sc); setText('p1-status', getStatusTxt(me.statusList));
-        setText('p2-name', op.name); setText('p2-hp-text', `${op.hp} / ${op.charData.maxHp}`); setWidth('p2-hp-bar', (op.hp / op.charData.maxHp) * 100); setText('p2-jkp', op.jkp); setText('p2-sc', op.sc); setText('p2-status', getStatusTxt(op.statusList));
+
+        setText('p1-name', me.name); 
+        setText('p1-hp-text', `${me.hp} / ${me.charData.maxHp}`); 
+        setWidth('p1-hp-bar', (me.hp / me.charData.maxHp) * 100); 
+        // ★修正: JKP / Cost
+        setText('p1-jkp', `${me.jkp} / ${me.charData.jkpCost}`); 
+        setText('p1-sc', me.sc); 
+        setText('p1-status', getStatusTxt(me.statusList));
+
+        setText('p2-name', op.name); 
+        setText('p2-hp-text', `${op.hp} / ${op.charData.maxHp}`); 
+        setWidth('p2-hp-bar', (op.hp / op.charData.maxHp) * 100); 
+        // ★修正: JKP / Cost
+        setText('p2-jkp', `${op.jkp} / ${op.charData.jkpCost}`); 
+        setText('p2-sc', op.sc); 
+        setText('p2-status', getStatusTxt(op.statusList));
     },
     createCardElement: (card, isHidden = false, onClick = null) => {
         const div = document.createElement('div'); div.className = `card card-${card.type}`;
@@ -383,15 +400,13 @@ socket.on('waiting', (msg) => { document.getElementById('wait-msg').textContent 
 socket.on('game_start', (data) => {
     myRole = data.role;
     opponentCharId = data.opponentChar;
-    opponentMoveMailbox = {}; // メールボックス初期化
+    opponentMoveMailbox = {}; 
     startGame();
 });
 
 socket.on('opponent_left', () => { alert('対戦相手が切断しました'); location.reload(); });
 
-// ★相手のカードを受け取ったら、ターン番号ごとの「郵便受け」に入れる
 socket.on('opponent_move', (data) => {
-    // data = { turn: 1, cardIndex: ..., ... }
     opponentMoveMailbox[data.turn] = data;
     console.log("Received opponent move for turn", data.turn);
 });
@@ -405,39 +420,33 @@ async function startGame() {
 
     while (game.p1.hp > 0 && game.p2.hp > 0) {
         game.turn++;
-        // ドロー
         game.p1.drawHand(); game.p2.drawHand();
         ui.updateStatus(game.p1, game.p2);
         ui.clearBattleField();
         ui.print(`--- TURN ${game.turn} ---`, 'c-sys');
 
-        // 1. 自分のカード選択
         const myCardIndex = await selectCardGUI(myPlayer, game);
         const myCardData = myPlayer.hand[myCardIndex];
         
-        // 2. 自分のカードを送信（ターン番号を付与）
         ui.print("通信中: 相手の入力を待っています...");
         ui.showModal("通信中...", []); 
         socket.emit('submit_card', { 
-            turn: game.turn, // ★重要: 今どのターンかを送る
+            turn: game.turn, 
             cardIndex: myCardIndex, 
             cardType: myCardData.type,
             cardValue: myCardData.value,
             cardMode: myCardData.mode
         });
 
-        // 3. 相手のカードを取得（すでに届いているか確認、無ければ待つ）
         const opponentCardData = await waitForOpponentCard(game.turn);
 
         ui.hideModal();
 
-        // 4. 相手のカードを復元して適用
         let opPlayer = (myRole === 'p1') ? game.p2 : game.p1;
         let opCard = new Card(opponentCardData.cardType, opponentCardData.cardValue);
         opCard.mode = opponentCardData.cardMode;
         opPlayer.hand[opponentCardData.cardIndex] = opCard;
 
-        // 5. バトル解決
         const p1Index = (myRole === 'p1') ? myCardIndex : opponentCardData.cardIndex;
         const p2Index = (myRole === 'p1') ? opponentCardData.cardIndex : myCardIndex;
         
@@ -481,21 +490,18 @@ function selectCardGUI(player, game) {
     });
 }
 
-// ★修正：指定ターンのカードが届くまで待つ関数
 function waitForOpponentCard(turn) {
     return new Promise(resolve => {
-        // すでに届いているなら即座に返す
         if (opponentMoveMailbox[turn]) {
             resolve(opponentMoveMailbox[turn]);
             return;
         }
-        // まだ届いていないなら、届いた瞬間に解決するように監視する
         const checkInterval = setInterval(() => {
             if (opponentMoveMailbox[turn]) {
                 clearInterval(checkInterval);
                 resolve(opponentMoveMailbox[turn]);
             }
-        }, 100); // 0.1秒ごとにチェック
+        }, 100); 
     });
 }
 
