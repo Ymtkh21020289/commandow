@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game Prototype v2</title>
+    <title>Card Game Prototype v3</title>
     <style>
         /* 黒い画面（コンソール）風のデザイン */
         body { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Monaco', monospace; margin: 0; padding: 20px; display: flex; flex-direction: column; height: 90vh; }
@@ -66,7 +66,7 @@ inputField.addEventListener('keydown', (e) => {
 
 
 // ==========================================
-// ゲームロジック (ルール修正版)
+// ゲームロジック (負傷スタック修正版)
 // ==========================================
 
 const CARD_TYPE = {
@@ -110,8 +110,8 @@ class StatusEffect {
     constructor(name, type, value1, value2 = null) {
         this.name = name;
         this.type = type;
-        this.val1 = value1;
-        this.val2 = value2;
+        this.val1 = value1; // 死毒:スタック数, 負傷:ダメージ量
+        this.val2 = value2; // 負傷:残り回数
     }
     onTurnEnd(owner) {
         if (this.name === '死毒') {
@@ -149,15 +149,15 @@ const CHARACTERS = {
         },
         skillEffect: (myself, opponent, cardValue) => {
             print(`  ⚔️ [スキル] 双撃!`);
-            // 通常攻撃2回なので、固定ダメージ2を2回与える
             opponent.receiveDamage(2);
             opponent.receiveDamage(2);
+            // 負傷: ダメージ1, 回数1
             opponent.addStatus(new StatusEffect('負傷', 'debuff', 1, 1));
         },
         jokerEffect: (myself, opponent) => {
             print(`  👹 [JOKER] 怪力乱神!`);
+            // 負傷: ダメージ1, 回数20
             opponent.addStatus(new StatusEffect('負傷', 'debuff', 1, 20));
-            // ジョーカーの説明には「通常攻撃1回」とあるので、ここも2ダメージ
             opponent.receiveDamage(2);
         }
     },
@@ -178,21 +178,15 @@ const CHARACTERS = {
         },
         jokerEffect: (myself, opponent) => {
             print(`  💉 [JOKER] オーバードーズ!`);
-            // 死毒を探して処理
             let poisonIndex = opponent.statusList.findIndex(s => s.name === '死毒');
-            
             if (poisonIndex !== -1) {
                 let poison = opponent.statusList[poisonIndex];
                 let dmg = Math.floor(poison.val1 / 2);
                 let heal = Math.floor(dmg / 2);
-                
                 print(`  毒吸収: ${dmg}ダメージを与え、${heal}回復。相手の死毒を除去！`);
                 opponent.receiveDamage(dmg);
                 myself.hp += heal;
-
-                // ★修正点: 死毒を取り除く
                 opponent.statusList.splice(poisonIndex, 1);
-
             } else {
                 print(`  (相手に毒がないため効果なし)`);
             }
@@ -219,22 +213,29 @@ class Player {
         this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
     }
 
+    // ★修正箇所: 負傷のスタック処理を追加
     addStatus(newEffect) {
         let existing = this.statusList.find(e => e.name === newEffect.name);
+        
         if (existing) {
-            if (existing.name === '死毒') existing.val1 += newEffect.val1;
-            else if (existing.name === '負傷') this.statusList.push(newEffect);
+            if (existing.name === '死毒') {
+                // 死毒はスタック数(val1)を加算
+                existing.val1 += newEffect.val1;
+                print(`  ☠️ [死毒] 累積: スタックが ${existing.val1} になりました`);
+            } 
+            else if (existing.name === '負傷') {
+                // 負傷は残り回数(val2)を加算して統合
+                existing.val2 += newEffect.val2;
+                print(`  🩸 [負傷] 累積: 残り回数が ${existing.val2} になりました`);
+            }
         } else {
             this.statusList.push(newEffect);
         }
     }
 
     receiveDamage(amount) {
-        // 負傷などの反応
         this.statusList.forEach(s => s.onTakeDamage(this, amount));
-        // 使い切ったデバフの削除
         this.statusList = this.statusList.filter(s => !s.isExpired());
-
         this.hp -= amount;
         if (this.hp < 0) this.hp = 0;
         print(`  > ${this.name} HP: ${this.hp}`);
@@ -280,17 +281,14 @@ class Game {
         let winner = null;
         let isBreakVictory = false;
 
-        // 勝敗ロジック
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; isBreakVictory = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; isBreakVictory = true; }
         else {
-            // 数値比較
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
-                // 同値処理 (防御 > 攻撃)
                 const p1Def = (c1.mode === CARD_MODE.DEFENSE);
                 const p2Def = (c2.mode === CARD_MODE.DEFENSE);
                 if (p1Def && !p2Def) winner = this.p1;
@@ -317,7 +315,6 @@ class Game {
     }
 
     applyCardEffect(winner, loser, card) {
-        // パッシブ発火チェック (攻撃モードで勝利時のみ)
         if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
              if (winner.charData.passive) {
                  winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
@@ -327,7 +324,6 @@ class Game {
         switch (card.type) {
             case CARD_TYPE.BLANK:
                 if (card.mode === CARD_MODE.ATTACK) {
-                    // ★修正点: 通常攻撃のダメージは固定で 2
                     print(`  👊 通常攻撃！ 威力:2`);
                     loser.receiveDamage(2);
                 } else {
@@ -335,7 +331,6 @@ class Game {
                 }
                 break;
             case CARD_TYPE.SKILL:
-                // スキルはキャラ固有処理へ (バーサーカーの双撃も修正済)
                 winner.charData.skillEffect(winner, loser, card.value);
                 break;
             case CARD_TYPE.JOKER:
@@ -364,7 +359,6 @@ class Game {
     }
 }
 
-// --- メインループ ---
 async function selectCard(player, game) {
     while (true) {
         print(`\n【${player.name} のターン】`, player === game.p1 ? 'p1' : 'p2');
@@ -384,10 +378,7 @@ async function selectCard(player, game) {
             print("⚠️ 無効な番号です。もう一度入力してください。");
             continue;
         }
-
-        if (!game.isCardPlayable(player, index)) {
-            continue; 
-        }
+        if (!game.isCardPlayable(player, index)) continue;
 
         const selectedCard = player.hand[index];
         if (selectedCard.type === CARD_TYPE.BLANK) {
@@ -403,8 +394,8 @@ async function selectCard(player, game) {
 }
 
 async function main() {
-    print("=== カードゲーム バトルシミュレータ v2 ===", 'system');
-    print("修正: 通常攻撃威力2固定 / ヴェノムJOKER毒除去", 'system');
+    print("=== カードゲーム バトルシミュレータ v3 ===", 'system');
+    print("修正: 負傷効果の重複時、回数を加算して統合", 'system');
     
     const game = new Game('berserker', 'venom');
 
