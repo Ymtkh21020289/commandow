@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game - Death Butterfly Fix</title>
+    <title>Card Game - Select Opponent</title>
     <style>
         /* --- CSS --- */
         body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -10,7 +10,7 @@
         .active-screen { display: flex; }
         #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; }
         h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-        p.subtitle { color: #aaa; margin-bottom: 40px; }
+        p.subtitle { color: #aaa; margin-bottom: 40px; font-size: 20px; }
         #char-list { display: flex; gap: 30px; }
         .char-select-card { width: 220px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; }
         .char-select-card:hover { transform: translateY(-10px); border-color: #00bcd4; background: #3a3a3a; }
@@ -47,12 +47,15 @@
         .c-p2 { color: #e57373; }
         .c-sys { color: #81c784; }
         .c-dmg { color: #ffb74d; font-weight: bold; }
+        
+        /* 選択中強調 */
+        .char-select-card.selected { border-color: #ffd700; background: #555; transform: scale(0.95); }
     </style>
 </head>
 <body>
     <div id="title-screen" class="screen active-screen">
-        <h1>CARD BATTLE</h1>
-        <p class="subtitle">キャラクターを選択してバトル開始</p>
+        <h1 id="title-text">PLAYER SELECT</h1>
+        <p id="subtitle-text" class="subtitle">あなたのキャラクターを選択してください</p>
         <div id="char-list"></div>
     </div>
     <div id="game-screen" class="screen">
@@ -152,9 +155,8 @@ const CHARACTERS = {
         passive: null, 
         skillEffect: (me, op, val) => {
             ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1');
-            // 10をランダムに分割
             let total = 10;
-            let power = Math.floor(Math.random() * (total - 1)) + 1; // 1〜9
+            let power = Math.floor(Math.random() * (total - 1)) + 1; 
             let count = total - power;
             ui.print(`  > 蝶付与: 威力${power} / 回数${count}`);
             op.addStatus(new StatusEffect('蝶', 'debuff', power, count));
@@ -162,20 +164,16 @@ const CHARACTERS = {
         jokerEffect: (me, op) => {
             ui.print(`⚰️ [JOKER] 葬儀`, 'c-p1');
             ui.print(`  > 通常攻撃3回`, 'c-dmg');
-            
-            // 3回攻撃（蝶がついている場合、この攻撃それぞれで蝶が発動し、回数を消費します）
             for(let i=0; i<3; i++) {
                 op.receiveDamage(1, me);
                 op.receiveDamage(1, me);
             }
-
-            // 蝶の起爆 (まだ残っていれば)
             let idx = op.statusList.findIndex(s => s.name === '蝶');
             if (idx !== -1) {
                 let butterfly = op.statusList[idx];
                 ui.print(`  > 蝶炸裂! 残り${butterfly.val1}ダメージ!`, 'c-dmg');
-                op.receiveDamage(butterfly.val1, me); // 最後に威力分ダメージ
-                op.statusList.splice(idx, 1); // 削除
+                op.receiveDamage(butterfly.val1, me);
+                op.statusList.splice(idx, 1);
             } else {
                 ui.print(`  > 蝶はすべて飛び去っていた...`);
             }
@@ -200,19 +198,16 @@ class StatusEffect {
         this.name = name; this.type = type; this.val1 = value1; this.val2 = value2;
     }
     onTakeDamage(owner, damageAmount, attacker) {
-        // スペルブレイク反動
         if (this.name === 'ブレイク反動') {
             ui.print(`⚡ [ブレイク反動] 被ダメージ+1`, 'c-dmg');
             return damageAmount + 1;
         }
-        // 負傷
         if (this.name === '負傷' && this.val2 > 0) {
             ui.print(`🩸 [負傷] 追加ダメージ ${this.val1}!`, 'c-dmg');
             owner.hp -= this.val1; 
             this.val2 -= 1;
         }
         // ★蝶 (被ダメージ増加)
-        // 攻撃を受けた時(damageAmount > 0)、威力分(val1)のダメージを追加で受ける
         if (this.name === '蝶' && damageAmount > 0) {
             ui.print(`🦋 [蝶] 追加ダメージ ${this.val1}!`, 'c-dmg');
             this.val2 -= 1; // 回数減少
@@ -254,7 +249,6 @@ class Player {
         this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
     }
     addStatus(ef) {
-        // ★重複処理（蝶も加算するように変更）
         let exist = this.statusList.find(e => e.name === ef.name);
         if (exist) {
             if (exist.name === '死毒') {
@@ -262,7 +256,6 @@ class Player {
             } else if (exist.name === '負傷') {
                 exist.val1 += ef.val1; exist.val2 += ef.val2;
             } else if (exist.name === '蝶') {
-                // 威力(val1)も回数(val2)も加算
                 exist.val1 += ef.val1; exist.val2 += ef.val2;
                 ui.print(`  > 蝶が群れを成した (威${exist.val1}/残${exist.val2})`);
             }
@@ -272,14 +265,10 @@ class Player {
     }
     receiveDamage(amount, source) {
         let finalAmount = amount;
-        
-        // ステータス効果による補正
         [...this.statusList].forEach(s => {
             finalAmount = s.onTakeDamage(this, finalAmount, source);
         });
-
         this.statusList = this.statusList.filter(s => !s.isExpired());
-
         if(finalAmount < 0) finalAmount = 0;
         this.hp -= finalAmount;
         if (this.hp < 0) this.hp = 0;
@@ -292,14 +281,12 @@ class Game {
         this.p2 = new Player(p2Key);
         this.turn = 1;
     }
-
     isCardPlayable(player, index) {
         const card = player.hand[index];
         if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) return false;
         if (card.type === CARD_TYPE.SKILL && player.sc > 0) return false;
         return true;
     }
-
     async resolveBattle(p1CardIndex, p2CardIndex) {
         const c1 = this.p1.hand[p1CardIndex];
         const c2 = this.p2.hand[p2CardIndex];
@@ -325,33 +312,26 @@ class Game {
                 else if (!p1Def && p2Def) winner = this.p2;
             }
         }
-
         if (p1BreakFail) this.p1.addStatus(new StatusEffect('ブレイク反動', 'debuff', 1));
         if (p2BreakFail) this.p2.addStatus(new StatusEffect('ブレイク反動', 'debuff', 1));
 
         if (winner) {
             const loser = (winner === this.p1) ? this.p2 : this.p1;
             const winCard = (winner === this.p1) ? c1 : c2;
-            
             ui.print(`🏅 勝者: ${winner.name}`, 'c-sys');
-            if (winCard.type === CARD_TYPE.SKILL) {
-                winner.sc = winner.charData.scMax;
-            }
+            if (winCard.type === CARD_TYPE.SKILL) winner.sc = winner.charData.scMax;
             this.applyCardEffect(winner, loser, winCard);
         } else {
             ui.print("Draw (引き分け)", 'c-sys');
         }
     }
-
     applyCardEffect(winner, loser, card) {
         if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
              if (winner.charData.passive) winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
         }
-        
         switch (card.type) {
             case CARD_TYPE.BLANK:
                 if (card.mode === CARD_MODE.ATTACK) { 
-                    // 死蝶パッシブ: 1ダメx2回
                     if (winner.charData.id === 'shicho') {
                         ui.print(`🦋 往にし者へ祝辞を (1x2)`, 'c-dmg');
                         loser.receiveDamage(1, winner);
@@ -395,14 +375,12 @@ const ui = {
             if(s.name === '蝶') return `🦋蝶(威${s.val1}/残${s.val2})`;
             return s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`;
         }).join(' ');
-
         setText('p1-name', p1.name);
         setText('p1-hp-text', `${p1.hp} / ${p1.charData.maxHp}`);
         setWidth('p1-hp-bar', (p1.hp / p1.charData.maxHp) * 100);
         setText('p1-jkp', p1.jkp);
         setText('p1-sc', p1.sc); 
         setText('p1-status', getStatusTxt(p1.statusList));
-
         setText('p2-name', p2.name);
         setText('p2-hp-text', `${p2.hp} / ${p2.charData.maxHp}`);
         setWidth('p2-hp-bar', (p2.hp / p2.charData.maxHp) * 100);
@@ -462,26 +440,45 @@ const ui = {
 };
 
 // ==========================================
-// メイン処理
+// キャラ選択・開始フロー
 // ==========================================
+let selectedPlayerChar = null;
+
 function initCharSelect() {
     const list = document.getElementById('char-list');
+    list.innerHTML = '';
     for (const key in CHARACTERS) {
         const c = CHARACTERS[key];
         const card = document.createElement('div'); card.className = 'char-select-card';
-        card.innerHTML = `<div class="char-icon">${c.icon}</div><div class="char-name">${c.name}</div><div class="char-stats"><span class="stat-label">HP:</span> ${c.maxHp} <br><span class="stat-label">JKP:</span> ${c.jkpCost} / <span class="stat-label">SC:</span> ${c.scMax}<br>${c.description}</div><div style="margin-top:10px; font-weight:bold; color:#0e639c;">CLICK TO START</div>`;
-        card.onclick = () => startGame(key);
+        card.innerHTML = `<div class="char-icon">${c.icon}</div><div class="char-name">${c.name}</div><div class="char-stats"><span class="stat-label">HP:</span> ${c.maxHp} <br><span class="stat-label">JKP:</span> ${c.jkpCost} / <span class="stat-label">SC:</span> ${c.scMax}<br>${c.description}</div><div style="margin-top:10px; font-weight:bold; color:#0e639c;">CLICK TO SELECT</div>`;
+        
+        card.onclick = () => onCharClick(key, card);
         list.appendChild(card);
     }
 }
 
-async function startGame(playerCharKey) {
-    const allKeys = Object.keys(CHARACTERS);
-    const opponentKey = allKeys.find(k => k !== playerCharKey) || 'berserker';
+function onCharClick(key, cardElem) {
+    if (!selectedPlayerChar) {
+        // 1回目：プレイヤー選択
+        selectedPlayerChar = key;
+        document.getElementById('title-text').textContent = "OPPONENT SELECT";
+        document.getElementById('subtitle-text').textContent = "対戦相手を選択してください";
+        document.querySelectorAll('.char-select-card').forEach(c => c.classList.remove('selected'));
+        cardElem.classList.add('selected'); // 視覚的フィードバック（実際は画面更新で消えることが多いが、一応）
+        
+        // テキストと色を変えて、相手選択モードであることを強調
+        document.getElementById('title-screen').style.background = 'radial-gradient(circle, #440000 0%, #1a0000 100%)';
+    } else {
+        // 2回目：相手選択 -> ゲーム開始
+        startGame(selectedPlayerChar, key);
+    }
+}
+
+async function startGame(playerCharKey, opponentCharKey) {
     ui.showGameScreen();
     ui.print("=== BATTLE START ===", 'c-sys');
     
-    const game = new Game(playerCharKey, opponentKey);
+    const game = new Game(playerCharKey, opponentCharKey);
 
     while (game.p1.hp > 0 && game.p2.hp > 0) {
         game.turn++;
