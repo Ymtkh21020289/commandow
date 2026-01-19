@@ -7,8 +7,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 静的ファイルの配信
-app.use(express.static(path.join(__dirname, 'public')));
+// 静的ファイルの配信（publicフォルダを使わず、現在の場所を見るように変更）
+app.use(express.static(__dirname));
+
+// ルートアクセス時にindex.htmlを返す
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
 
 // プレイヤー待機列
 let waitingPlayer = null;
