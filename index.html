@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game Prototype v3</title>
+    <title>Card Game Prototype v4</title>
     <style>
         /* 黒い画面（コンソール）風のデザイン */
         body { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Monaco', monospace; margin: 0; padding: 20px; display: flex; flex-direction: column; height: 90vh; }
@@ -66,7 +66,7 @@ inputField.addEventListener('keydown', (e) => {
 
 
 // ==========================================
-// ゲームロジック (負傷スタック修正版)
+// ゲームロジック (負傷: 威力&回数 加算版)
 // ==========================================
 
 const CARD_TYPE = {
@@ -213,7 +213,6 @@ class Player {
         this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
     }
 
-    // ★修正箇所: 負傷のスタック処理を追加
     addStatus(newEffect) {
         let existing = this.statusList.find(e => e.name === newEffect.name);
         
@@ -224,9 +223,10 @@ class Player {
                 print(`  ☠️ [死毒] 累積: スタックが ${existing.val1} になりました`);
             } 
             else if (existing.name === '負傷') {
-                // 負傷は残り回数(val2)を加算して統合
+                // ★修正箇所: 負傷は「威力(val1)」と「回数(val2)」の両方を加算
+                existing.val1 += newEffect.val1;
                 existing.val2 += newEffect.val2;
-                print(`  🩸 [負傷] 累積: 残り回数が ${existing.val2} になりました`);
+                print(`  🩸 [負傷] 累積: 威力が ${existing.val1} / 残り回数が ${existing.val2} に強化されました`);
             }
         } else {
             this.statusList.push(newEffect);
@@ -394,8 +394,8 @@ async function selectCard(player, game) {
 }
 
 async function main() {
-    print("=== カードゲーム バトルシミュレータ v3 ===", 'system');
-    print("修正: 負傷効果の重複時、回数を加算して統合", 'system');
+    print("=== カードゲーム バトルシミュレータ v4 ===", 'system');
+    print("修正: 負傷効果の重複時、回数と威力を合算", 'system');
     
     const game = new Game('berserker', 'venom');
 
