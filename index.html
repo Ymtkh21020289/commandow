@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game Battle GUI</title>
+    <title>Card Game Battle GUI - Char Select</title>
     <style>
         /* --- 全体のレイアウト --- */
         body {
@@ -15,7 +15,64 @@
             overflow: hidden;
         }
 
-        /* 左側：ゲーム盤面 (70%) */
+        /* --- 画面切り替え用 --- */
+        .screen {
+            width: 100%;
+            height: 100%;
+            display: none; /* 初期状態は非表示 */
+        }
+        .active-screen {
+            display: flex;
+        }
+
+        /* --- タイトル・キャラ選択画面 --- */
+        #title-screen {
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%);
+            z-index: 200;
+        }
+        h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        p.subtitle { color: #aaa; margin-bottom: 40px; }
+        
+        #char-list {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .char-select-card {
+            width: 220px;
+            background: #333;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .char-select-card:hover {
+            transform: translateY(-10px);
+            border-color: #00bcd4;
+            box-shadow: 0 0 20px rgba(0, 188, 212, 0.4);
+            background: #3a3a3a;
+        }
+        .char-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #fff; }
+        .char-stats { font-size: 14px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.6; }
+        .stat-label { color: #888; font-size: 12px; }
+        .char-icon { font-size: 50px; margin-bottom: 10px; }
+
+        /* --- ゲーム画面 (前回と同じ) --- */
+        #game-screen {
+            display: none; /* JSでflexにする */
+            width: 100%;
+            height: 100%;
+        }
+        
         #game-area {
             flex: 7;
             display: flex;
@@ -25,7 +82,6 @@
             position: relative;
         }
 
-        /* 右側：ログ表示 (30%) */
         #log-area {
             flex: 3;
             background: #111;
@@ -36,7 +92,6 @@
             border-left: 1px solid #333;
         }
 
-        /* --- 各エリアの定義 --- */
         .player-zone {
             flex: 1;
             display: flex;
@@ -57,7 +112,6 @@
             background-color: rgba(0,0,0,0.2);
         }
 
-        /* --- ステータス表示 --- */
         .status-box {
             width: 80%;
             background: rgba(0,0,0,0.5);
@@ -86,7 +140,6 @@
             color: #ffcc00;
         }
 
-        /* --- カードのデザイン --- */
         .hand-container {
             display: flex;
             gap: 15px;
@@ -112,19 +165,9 @@
             user-select: none;
         }
 
-        .card:hover {
-            transform: translateY(-15px) scale(1.05);
-            box-shadow: 0 10px 15px rgba(0,0,0,0.5);
-            z-index: 10;
-        }
+        .card:hover { transform: translateY(-15px) scale(1.05); z-index: 10; }
+        .card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; pointer-events: none; }
 
-        .card.disabled {
-            filter: grayscale(100%) brightness(0.5);
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-
-        /* カードの種類ごとの色分け */
         .card-blank { border: 2px solid #ccc; background: linear-gradient(135deg, #fff, #f0f0f0); }
         .card-skill { border: 2px solid #ffd700; background: linear-gradient(135deg, #fff, #fffde7); }
         .card-joker { border: 2px solid #9c27b0; background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #4a148c; }
@@ -132,16 +175,8 @@
 
         .card-top { font-size: 18px; font-weight: bold; }
         .card-center { font-size: 32px; text-align: center; margin-top: 10px; }
-        .card-bottom { font-size: 12px; text-align: right; }
-        
-        .card-name {
-            font-size: 10px;
-            text-align: center;
-            color: #555;
-            font-weight: bold;
-        }
+        .card-name { font-size: 10px; text-align: center; color: #555; font-weight: bold; }
 
-        /* --- モーダル (攻撃/防御選択など) --- */
         #modal-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -166,7 +201,6 @@
         .btn-atk { background: #d32f2f; }
         .btn-def { background: #1976d2; }
 
-        /* ログの装飾 */
         .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .c-p1 { color: #64b5f6; }
         .c-p2 { color: #e57373; }
@@ -176,242 +210,73 @@
 </head>
 <body>
 
-    <div id="game-area">
-        <div class="player-zone" id="p2-zone">
-            <div class="status-box">
-                <div id="p2-name">Player 2</div>
-                <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
-                <div id="p2-hp-text">HP: 36/36</div>
-                <div id="p2-status" class="status-icons"></div>
-                <div>JKP: <span id="p2-jkp">0</span></div>
+    <div id="title-screen" class="screen active-screen">
+        <h1>CARD BATTLE</h1>
+        <p class="subtitle">キャラクターを選択してバトル開始</p>
+        <div id="char-list">
             </div>
-            <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);"></div>
-        </div>
-
-        <div id="battle-zone">
-            <div id="battle-msg" style="position:absolute; color:#aaa;">BATTLE FIELD</div>
-            <div id="p1-play-card"></div>
-            <div style="font-size:30px; font-weight:bold;">VS</div>
-            <div id="p2-play-card"></div>
-        </div>
-
-        <div class="player-zone" id="p1-zone">
-            <div class="hand-container" id="p1-hand-view"></div>
-            
-            <div class="status-box" style="margin-top: 20px;">
-                <div id="p1-name">Player 1</div>
-                <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
-                <div id="p1-hp-text">HP: 20/20</div>
-                <div id="p1-status" class="status-icons"></div>
-                <div>JKP: <span id="p1-jkp">0</span></div>
-            </div>
-        </div>
-
-        <div id="modal-overlay">
-            <div class="modal-content">
-                <h3 id="modal-title">選択してください</h3>
-                <div id="modal-buttons"></div>
-            </div>
-        </div>
     </div>
 
-    <div id="log-area">
-        <div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div>
-        <div id="logs"></div>
+    <div id="game-screen" class="screen">
+        <div id="game-area">
+            <div class="player-zone" id="p2-zone">
+                <div class="status-box">
+                    <div id="p2-name">Player 2</div>
+                    <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
+                    <div id="p2-hp-text">HP: 36/36</div>
+                    <div id="p2-status" class="status-icons"></div>
+                    <div>JKP: <span id="p2-jkp">0</span></div>
+                </div>
+                <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);"></div>
+            </div>
+
+            <div id="battle-zone">
+                <div id="battle-msg" style="position:absolute; color:#aaa;">BATTLE FIELD</div>
+                <div id="p1-play-card"></div>
+                <div style="font-size:30px; font-weight:bold;">VS</div>
+                <div id="p2-play-card"></div>
+            </div>
+
+            <div class="player-zone" id="p1-zone">
+                <div class="hand-container" id="p1-hand-view"></div>
+                <div class="status-box" style="margin-top: 20px;">
+                    <div id="p1-name">Player 1</div>
+                    <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
+                    <div id="p1-hp-text">HP: 20/20</div>
+                    <div id="p1-status" class="status-icons"></div>
+                    <div>JKP: <span id="p1-jkp">0</span></div>
+                </div>
+            </div>
+
+            <div id="modal-overlay">
+                <div class="modal-content">
+                    <h3 id="modal-title">選択してください</h3>
+                    <div id="modal-buttons"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="log-area">
+            <div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div>
+            <div id="logs"></div>
+        </div>
     </div>
 
 <script>
 // ==========================================
-// GUI制御 & ユーティリティ
+// 定数 & キャラクターデータ
 // ==========================================
-const ui = {
-    logs: document.getElementById('logs'),
-    p1Name: document.getElementById('p1-name'),
-    p1HpBar: document.getElementById('p1-hp-bar'),
-    p1HpText: document.getElementById('p1-hp-text'),
-    p1Jkp: document.getElementById('p1-jkp'),
-    p1Status: document.getElementById('p1-status'),
-    p1Hand: document.getElementById('p1-hand-view'),
-
-    p2Name: document.getElementById('p2-name'),
-    p2HpBar: document.getElementById('p2-hp-bar'),
-    p2HpText: document.getElementById('p2-hp-text'),
-    p2Jkp: document.getElementById('p2-jkp'),
-    p2Status: document.getElementById('p2-status'),
-    p2Hand: document.getElementById('p2-hand-view'),
-
-    battleP1: document.getElementById('p1-play-card'),
-    battleP2: document.getElementById('p2-play-card'),
-    modal: document.getElementById('modal-overlay'),
-    modalTitle: document.getElementById('modal-title'),
-    modalBtns: document.getElementById('modal-buttons'),
-
-    print: (text, type = '') => {
-        const div = document.createElement('div');
-        div.textContent = text;
-        div.className = 'log-entry ' + type;
-        ui.logs.appendChild(div);
-        ui.logs.scrollTop = ui.logs.scrollHeight;
-    },
-
-    updateStatus: (p1, p2) => {
-        // P1 Update
-        ui.p1Name.textContent = p1.name;
-        ui.p1HpText.textContent = `${p1.hp} / ${p1.charData.maxHp}`;
-        ui.p1HpBar.style.width = `${(p1.hp / p1.charData.maxHp) * 100}%`;
-        ui.p1Jkp.textContent = p1.jkp;
-        ui.p1Status.textContent = p1.statusList.map(s => 
-            s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`
-        ).join(' ');
-
-        // P2 Update
-        ui.p2Name.textContent = p2.name;
-        ui.p2HpText.textContent = `${p2.hp} / ${p2.charData.maxHp}`;
-        ui.p2HpBar.style.width = `${(p2.hp / p2.charData.maxHp) * 100}%`;
-        ui.p2Jkp.textContent = p2.jkp;
-        ui.p2Status.textContent = p2.statusList.map(s => 
-            s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`
-        ).join(' ');
-    },
-
-    createCardElement: (card, isHidden = false, onClick = null) => {
-        const div = document.createElement('div');
-        div.className = `card card-${card.type}`;
-        
-        if (isHidden) {
-            div.style.background = '#333';
-            div.style.border = '2px solid #555';
-            return div;
-        }
-
-        let icon = '';
-        let label = '';
-        if (card.type === 'blank') { icon = '⚔️'; label = '通常'; }
-        if (card.type === 'skill') { icon = '⚡'; label = 'スキル'; }
-        if (card.type === 'joker') { icon = '🃏'; label = 'JOKER'; }
-        if (card.type === 'break') { icon = '🛑'; label = 'BREAK'; }
-
-        // Mode表示 (攻撃/防御)
-        let modeMark = '';
-        if (card.mode === 'defense') modeMark = '🛡️';
-
-        div.innerHTML = `
-            <div class="card-top">${card.value === 0 ? '∞' : card.value}</div>
-            <div class="card-center">${icon}${modeMark}</div>
-            <div class="card-name">${label}</div>
-        `;
-
-        if (onClick) {
-            div.onclick = onClick;
-        }
-        return div;
-    },
-
-    renderHand: (player, isPlayerControlled, callback) => {
-        const container = isPlayerControlled ? ui.p1Hand : ui.p2Hand;
-        container.innerHTML = '';
-        player.hand.forEach((card, index) => {
-            const isPlayable = isPlayerControlled ? 
-                !(card.type === 'joker' && player.jkp < player.charData.jkpCost) : true;
-            
-            const cardEl = ui.createCardElement(card, !isPlayerControlled, () => {
-                if (isPlayerControlled && isPlayable && callback) callback(index);
-            });
-
-            if (isPlayerControlled && !isPlayable) cardEl.classList.add('disabled');
-            container.appendChild(cardEl);
-        });
-    },
-
-    clearBattleField: () => {
-        ui.battleP1.innerHTML = '';
-        ui.battleP2.innerHTML = '';
-    },
-
-    showBattleCards: (c1, c2) => {
-        ui.battleP1.innerHTML = '';
-        ui.battleP2.innerHTML = '';
-        ui.battleP1.appendChild(ui.createCardElement(c1));
-        ui.battleP2.appendChild(ui.createCardElement(c2));
-    },
-
-    showModal: (title, buttons) => {
-        return new Promise(resolve => {
-            ui.modalTitle.textContent = title;
-            ui.modalBtns.innerHTML = '';
-            ui.modal.style.display = 'flex';
-            
-            buttons.forEach(btn => {
-                const b = document.createElement('button');
-                b.textContent = btn.label;
-                b.className = `btn ${btn.class || ''}`;
-                b.onclick = () => {
-                    ui.modal.style.display = 'none';
-                    resolve(btn.value);
-                };
-                ui.modalBtns.appendChild(b);
-            });
-        });
-    },
-    
-    wait: (ms) => new Promise(r => setTimeout(r, ms))
-};
-
-
-// ==========================================
-// ゲームロジック (V4ベース + GUI結合)
-// ==========================================
-
 const CARD_TYPE = { BLANK: 'blank', SKILL: 'skill', JOKER: 'joker', SPELL_BREAK: 'break' };
 const CARD_MODE = { ATTACK: 'attack', DEFENSE: 'defense' };
 
-class Card {
-    constructor(type) {
-        this.type = type;
-        this.value = 0;
-        this.mode = CARD_MODE.ATTACK;
-        this.initValue();
-    }
-    initValue() {
-        if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) this.value = Math.floor(Math.random() * 13) + 1;
-        else if (this.type === CARD_TYPE.JOKER) this.value = 14;
-        else if (this.type === CARD_TYPE.SPELL_BREAK) this.value = 0;
-    }
-    toString() {
-        let modeStr = (this.type === CARD_TYPE.BLANK) ? `(${this.mode === CARD_MODE.ATTACK ? '攻' : '防'})` : '';
-        return `[${this.type}${modeStr}:${this.value}]`;
-    }
-}
-
-class StatusEffect {
-    constructor(name, type, value1, value2 = null) {
-        this.name = name; this.type = type; this.val1 = value1; this.val2 = value2;
-    }
-    onTurnEnd(owner) {
-        if (this.name === '死毒') {
-            const dmg = 2;
-            ui.print(`☠️ [死毒] ${owner.name}に${dmg}ダメージ`, 'c-dmg');
-            owner.receiveDamage(dmg);
-            this.val1 -= 1;
-        }
-    }
-    onTakeDamage(owner) {
-        if (this.name === '負傷' && this.val2 > 0) {
-            ui.print(`🩸 [負傷] 追加ダメージ ${this.val1}!`, 'c-dmg');
-            owner.hp -= this.val1;
-            this.val2 -= 1;
-        }
-    }
-    isExpired() {
-        if (this.name === '死毒') return this.val1 <= 0;
-        if (this.name === '負傷') return this.val2 <= 0;
-        return false;
-    }
-}
-
 const CHARACTERS = {
     berserker: {
-        name: "バーサーカー", maxHp: 20, jkpCost: 8,
+        id: 'berserker',
+        name: "バーサーカー",
+        icon: "👹",
+        maxHp: 20,
+        jkpCost: 8,
+        description: "攻撃特化型。<br>HPは低いが、通常攻撃の威力が高く、ジョーカーで強力な継続ダメージを与える。",
         passive: (p, type, data) => {
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
                 ui.print(`🔥 [パッシブ] JKP+1`);
@@ -430,7 +295,12 @@ const CHARACTERS = {
         }
     },
     venom: {
-        name: "ヴェノム", maxHp: 36, jkpCost: 0,
+        id: 'venom',
+        name: "ヴェノム",
+        icon: "🧪",
+        maxHp: 36,
+        jkpCost: 0,
+        description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => {
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
                 ui.print(`🧪 [パッシブ] 死毒+2`);
@@ -456,6 +326,143 @@ const CHARACTERS = {
         }
     }
 };
+
+// ==========================================
+// GUI制御 & ユーティリティ
+// ==========================================
+const ui = {
+    logs: document.getElementById('logs'),
+    
+    // 画面切り替え
+    showGameScreen: () => {
+        document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'flex';
+    },
+
+    // ログなど
+    print: (text, type = '') => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        div.className = 'log-entry ' + type;
+        ui.logs.appendChild(div);
+        ui.logs.scrollTop = ui.logs.scrollHeight;
+    },
+
+    // ステータス更新
+    updateStatus: (p1, p2) => {
+        const setText = (id, txt) => document.getElementById(id).textContent = txt;
+        const setWidth = (id, percent) => document.getElementById(id).style.width = percent + '%';
+        const getStatusTxt = (list) => list.map(s => s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`).join(' ');
+
+        setText('p1-name', p1.name);
+        setText('p1-hp-text', `${p1.hp} / ${p1.charData.maxHp}`);
+        setWidth('p1-hp-bar', (p1.hp / p1.charData.maxHp) * 100);
+        setText('p1-jkp', p1.jkp);
+        setText('p1-status', getStatusTxt(p1.statusList));
+
+        setText('p2-name', p2.name);
+        setText('p2-hp-text', `${p2.hp} / ${p2.charData.maxHp}`);
+        setWidth('p2-hp-bar', (p2.hp / p2.charData.maxHp) * 100);
+        setText('p2-jkp', p2.jkp);
+        setText('p2-status', getStatusTxt(p2.statusList));
+    },
+
+    createCardElement: (card, isHidden = false, onClick = null) => {
+        const div = document.createElement('div');
+        div.className = `card card-${card.type}`;
+        if (isHidden) {
+            div.style.background = '#333'; div.style.border = '2px solid #555'; return div;
+        }
+        let icon = '', label = '', modeMark = '';
+        if (card.type === 'blank') { icon = '⚔️'; label = '通常'; }
+        if (card.type === 'skill') { icon = '⚡'; label = 'スキル'; }
+        if (card.type === 'joker') { icon = '🃏'; label = 'JOKER'; }
+        if (card.type === 'break') { icon = '🛑'; label = 'BREAK'; }
+        if (card.mode === 'defense') modeMark = '🛡️';
+
+        div.innerHTML = `<div class="card-top">${card.value === 0 ? '∞' : card.value}</div><div class="card-center">${icon}${modeMark}</div><div class="card-name">${label}</div>`;
+        if (onClick) div.onclick = onClick;
+        return div;
+    },
+
+    renderHand: (player, isPlayerControlled, callback) => {
+        const container = isPlayerControlled ? document.getElementById('p1-hand-view') : document.getElementById('p2-hand-view');
+        container.innerHTML = '';
+        player.hand.forEach((card, index) => {
+            const isPlayable = isPlayerControlled ? !(card.type === 'joker' && player.jkp < player.charData.jkpCost) : true;
+            const cardEl = ui.createCardElement(card, !isPlayerControlled, () => {
+                if (isPlayerControlled && isPlayable && callback) callback(index);
+            });
+            if (isPlayerControlled && !isPlayable) cardEl.classList.add('disabled');
+            container.appendChild(cardEl);
+        });
+    },
+
+    clearBattleField: () => {
+        document.getElementById('p1-play-card').innerHTML = '';
+        document.getElementById('p2-play-card').innerHTML = '';
+    },
+    showBattleCards: (c1, c2) => {
+        const b1 = document.getElementById('p1-play-card');
+        const b2 = document.getElementById('p2-play-card');
+        b1.innerHTML = ''; b2.innerHTML = '';
+        b1.appendChild(ui.createCardElement(c1));
+        b2.appendChild(ui.createCardElement(c2));
+    },
+    showModal: (title, buttons) => {
+        return new Promise(resolve => {
+            document.getElementById('modal-title').textContent = title;
+            const btnArea = document.getElementById('modal-buttons');
+            btnArea.innerHTML = '';
+            document.getElementById('modal-overlay').style.display = 'flex';
+            buttons.forEach(btn => {
+                const b = document.createElement('button');
+                b.textContent = btn.label;
+                b.className = `btn ${btn.class || ''}`;
+                b.onclick = () => { document.getElementById('modal-overlay').style.display = 'none'; resolve(btn.value); };
+                btnArea.appendChild(b);
+            });
+        });
+    },
+    wait: (ms) => new Promise(r => setTimeout(r, ms))
+};
+
+// ==========================================
+// ゲームクラス定義 (ロジック)
+// ==========================================
+class Card {
+    constructor(type) {
+        this.type = type; this.value = 0; this.mode = CARD_MODE.ATTACK; this.initValue();
+    }
+    initValue() {
+        if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) this.value = Math.floor(Math.random() * 13) + 1;
+        else if (this.type === CARD_TYPE.JOKER) this.value = 14;
+        else if (this.type === CARD_TYPE.SPELL_BREAK) this.value = 0;
+    }
+}
+
+class StatusEffect {
+    constructor(name, type, value1, value2 = null) {
+        this.name = name; this.type = type; this.val1 = value1; this.val2 = value2;
+    }
+    onTurnEnd(owner) {
+        if (this.name === '死毒') {
+            const dmg = 2; ui.print(`☠️ [死毒] ${owner.name}に${dmg}ダメージ`, 'c-dmg');
+            owner.receiveDamage(dmg); this.val1 -= 1;
+        }
+    }
+    onTakeDamage(owner) {
+        if (this.name === '負傷' && this.val2 > 0) {
+            ui.print(`🩸 [負傷] 追加ダメージ ${this.val1}!`, 'c-dmg');
+            owner.hp -= this.val1; this.val2 -= 1;
+        }
+    }
+    isExpired() {
+        if (this.name === '死毒') return this.val1 <= 0;
+        if (this.name === '負傷') return this.val2 <= 0;
+        return false;
+    }
+}
 
 class Player {
     constructor(charKey) {
@@ -495,20 +502,19 @@ class Game {
         this.p2 = new Player(p2Key);
         this.turn = 1;
     }
-
+    isCardPlayable(player, index) {
+        const card = player.hand[index];
+        if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) return false;
+        return true;
+    }
     async resolveBattle(p1CardIndex, p2CardIndex) {
         const c1 = this.p1.hand[p1CardIndex];
         const c2 = this.p2.hand[p2CardIndex];
-
-        // カードを中央に表示
         ui.showBattleCards(c1, c2);
         ui.print(`⚔️ バトル判定...`);
         await ui.wait(800);
 
-        let winner = null;
-        let isBreakVictory = false;
-
-        // 勝敗判定ロジック
+        let winner = null; let isBreakVictory = false;
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; isBreakVictory = true; }
@@ -523,132 +529,92 @@ class Game {
                 else if (!p1Def && p2Def) winner = this.p2;
             }
         }
-
         if (winner) {
             const loser = (winner === this.p1) ? this.p2 : this.p1;
             const winCard = (winner === this.p1) ? c1 : c2;
             ui.print(`🏅 勝者: ${winner.name}`, 'c-sys');
-            
-            if (isBreakVictory) {
-                ui.print(`⚡ スペルブレイク失敗! 反動ダメージ!`, 'c-dmg');
-                loser.receiveDamage(1);
-            }
+            if (isBreakVictory) { ui.print(`⚡ スペルブレイク失敗! 反動ダメージ!`, 'c-dmg'); loser.receiveDamage(1); }
             this.applyCardEffect(winner, loser, winCard);
-        } else {
-            ui.print("Draw (引き分け)", 'c-sys');
-        }
+        } else { ui.print("Draw (引き分け)", 'c-sys'); }
     }
-
     applyCardEffect(winner, loser, card) {
         if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
              if (winner.charData.passive) winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
         }
         switch (card.type) {
             case CARD_TYPE.BLANK:
-                if (card.mode === CARD_MODE.ATTACK) {
-                    ui.print(`👊 通常攻撃 (威力:2)`, 'c-dmg');
-                    loser.receiveDamage(2);
-                } else {
-                    ui.print(`🛡️ 防御成功`);
-                }
+                if (card.mode === CARD_MODE.ATTACK) { ui.print(`👊 通常攻撃 (威力:2)`, 'c-dmg'); loser.receiveDamage(2); }
+                else ui.print(`🛡️ 防御成功`);
                 break;
-            case CARD_TYPE.SKILL:
-                winner.charData.skillEffect(winner, loser, card.value);
-                break;
-            case CARD_TYPE.JOKER:
-                winner.jkp -= winner.charData.jkpCost;
-                winner.charData.jokerEffect(winner, loser);
-                break;
-            case CARD_TYPE.SPELL_BREAK:
-                ui.print(`✨ スペルブレイク成功`);
-                break;
+            case CARD_TYPE.SKILL: winner.charData.skillEffect(winner, loser, card.value); break;
+            case CARD_TYPE.JOKER: winner.jkp -= winner.charData.jkpCost; winner.charData.jokerEffect(winner, loser); break;
+            case CARD_TYPE.SPELL_BREAK: ui.print(`✨ スペルブレイク成功`); break;
         }
     }
 }
 
 // ==========================================
-// メイン制御ループ (GUI対応版)
+// メイン制御
 // ==========================================
 
-async function selectCardGUI(player, game, isPlayerControlled) {
-    if (!isPlayerControlled) {
-        // コンピュータ(P2)はランダム
-        await ui.wait(500); // 思考時間演出
-        let validIndexes = [];
-        player.hand.forEach((c, i) => {
-            if (game.isCardPlayable(player, i)) validIndexes.push(i);
-        });
-        const choice = validIndexes[Math.floor(Math.random() * validIndexes.length)];
-        
-        // 通常カードならランダムに攻防
-        if (player.hand[choice].type === CARD_TYPE.BLANK) {
-            if (Math.random() > 0.5) player.hand[choice].mode = CARD_MODE.DEFENSE;
-        }
-        return choice;
-    }
-
-    // プレイヤー(P1)の入力待ち
-    return new Promise(resolve => {
-        ui.print(`あなたのターン: カードを選んでください`, 'c-sys');
-        ui.renderHand(player, true, async (index) => {
-            // カードクリック時の処理
-            const card = player.hand[index];
-            
-            if (card.type === CARD_TYPE.BLANK) {
-                // 攻撃か防御か選ぶ
-                const mode = await ui.showModal("モード選択", [
-                    { label: "⚔️ 攻撃", value: "attack", class: "btn-atk" },
-                    { label: "🛡️ 防御", value: "defense", class: "btn-def" }
-                ]);
-                card.mode = (mode === 'defense') ? CARD_MODE.DEFENSE : CARD_MODE.ATTACK;
-            }
-            
-            // 選択完了後は手札をクリック不可にするなどUI更新
-            ui.p1Hand.innerHTML = ''; 
-            resolve(index);
-        });
-    });
-}
-
-// 簡易的なPlayable判定（ゲームクラス内から切り出し）
-Game.prototype.isCardPlayable = function(player, index) {
-    const card = player.hand[index];
-    if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) return false;
-    return true;
-};
-
-async function main() {
-    ui.print("=== BATTLE START ===", 'c-sys');
-    const game = new Game('berserker', 'venom');
+// 1. キャラクター選択画面の生成
+function initCharSelect() {
+    const list = document.getElementById('char-list');
     
-    // ゲームループ
+    // 定義されているキャラをループしてボタン作成
+    for (const key in CHARACTERS) {
+        const c = CHARACTERS[key];
+        const card = document.createElement('div');
+        card.className = 'char-select-card';
+        card.innerHTML = `
+            <div class="char-icon">${c.icon}</div>
+            <div class="char-name">${c.name}</div>
+            <div class="char-stats">
+                <span class="stat-label">HP:</span> ${c.maxHp} <br>
+                <span class="stat-label">JKP Cost:</span> ${c.jkpCost} <br>
+                ${c.description}
+            </div>
+            <div style="margin-top:10px; font-weight:bold; color:#0e639c;">CLICK TO START</div>
+        `;
+        card.onclick = () => startGame(key);
+        list.appendChild(card);
+    }
+}
+
+// 2. ゲーム開始処理
+async function startGame(playerCharKey) {
+    // 相手を自動決定（選ばなかった方）
+    const allKeys = Object.keys(CHARACTERS);
+    const opponentKey = allKeys.find(k => k !== playerCharKey) || 'berserker'; // 万が一のため
+
+    // 画面切り替え
+    ui.showGameScreen();
+    ui.print("=== BATTLE START ===", 'c-sys');
+    
+    const game = new Game(playerCharKey, opponentKey);
+
+    // ゲームループ開始
     while (game.p1.hp > 0 && game.p2.hp > 0) {
-        // ターン開始
         game.turn++;
-        game.p1.drawHand();
-        game.p2.drawHand();
+        game.p1.drawHand(); game.p2.drawHand();
         ui.updateStatus(game.p1, game.p2);
         ui.clearBattleField();
         ui.print(`--- TURN ${game.turn} ---`, 'c-sys');
 
-        // カード選択
-        // P2の手札描画(裏面)
+        // P2思考（ランダム）
         ui.renderHand(game.p2, false);
+        const p2Index = await autoSelect(game.p2, game);
 
-        // 同時に処理してるように見せるため、P1の入力を待つ
-        const p1Index = await selectCardGUI(game.p1, game, true);
-        ui.print(`P1がカードをセット`);
+        // P1選択待ち
+        const p1Index = await selectCardGUI(game.p1, game);
         
-        const p2Index = await selectCardGUI(game.p2, game, false);
-        ui.print(`P2がカードをセット`);
-
         // バトル解決
         await game.resolveBattle(p1Index, p2Index);
         ui.updateStatus(game.p1, game.p2);
 
         if (game.p1.hp <= 0 || game.p2.hp <= 0) break;
 
-        // ターン終了処理
+        // ターン終了
         game.p1.jkp++; game.p2.jkp++;
         [game.p1, game.p2].forEach(p => {
             p.statusList.forEach(s => s.onTurnEnd(p));
@@ -661,11 +627,42 @@ async function main() {
 
     ui.print("=== GAME SET ===", 'c-sys');
     const winnerName = game.p1.hp > 0 ? game.p1.name : game.p2.name;
-    await ui.showModal(`勝者: ${winnerName}`, [{ label: "再戦", value: "retry" }]);
-    location.reload(); // 再読み込み
+    await ui.showModal(`勝者: ${winnerName}`, [{ label: "タイトルへ戻る", value: "retry" }]);
+    location.reload();
 }
 
-main();
+// プレイヤー用入力待ち
+function selectCardGUI(player, game) {
+    return new Promise(resolve => {
+        ui.print(`あなたのターン: カードを選んでください`, 'c-sys');
+        ui.renderHand(player, true, async (index) => {
+            const card = player.hand[index];
+            if (card.type === CARD_TYPE.BLANK) {
+                const mode = await ui.showModal("モード選択", [
+                    { label: "⚔️ 攻撃", value: "attack", class: "btn-atk" },
+                    { label: "🛡️ 防御", value: "defense", class: "btn-def" }
+                ]);
+                card.mode = (mode === 'defense') ? CARD_MODE.DEFENSE : CARD_MODE.ATTACK;
+            }
+            document.getElementById('p1-hand-view').innerHTML = ''; 
+            resolve(index);
+        });
+    });
+}
+
+// コンピュータ用思考
+async function autoSelect(player, game) {
+    let validIndexes = [];
+    player.hand.forEach((c, i) => { if (game.isCardPlayable(player, i)) validIndexes.push(i); });
+    const choice = validIndexes[Math.floor(Math.random() * validIndexes.length)];
+    if (player.hand[choice].type === CARD_TYPE.BLANK) {
+        if (Math.random() > 0.5) player.hand[choice].mode = CARD_MODE.DEFENSE;
+    }
+    return choice;
+}
+
+// 起動
+initCharSelect();
 
 </script>
 </body>
