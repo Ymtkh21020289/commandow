@@ -2,9 +2,9 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game - Death Butterfly</title>
+    <title>Card Game - Death Butterfly Fix</title>
     <style>
-        /* --- CSSは前回と同じですが、念のためすべて含めます --- */
+        /* --- CSS --- */
         body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .screen { width: 100%; height: 100%; display: none; }
         .active-screen { display: flex; }
@@ -145,40 +145,39 @@ const CHARACTERS = {
             }
         }
     },
-    // ★新キャラ
     shicho: {
         id: 'shicho', name: "死蝶", icon: "🦋",
         maxHp: 24, jkpCost: 4, scMax: 0,
-        description: "カウンター型。<br>「蝶」を相手に植え付け、攻撃を受けた際にダメージを反射する。<br>パッシブにより通常攻撃が2回ヒットになる。",
-        passive: null, // ロジック内で処理
+        description: "コンボ火力型。<br>「蝶」を相手に植え付ける。「蝶」は相手がダメージを受けるたびに追加ダメージを与える。<br>ジョーカーで一気に起爆する。",
+        passive: null, 
         skillEffect: (me, op, val) => {
             ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1');
-            // 10をランダムに分割 (威力:val1, 回数:val2)
-            // 少なくとも威力1, 回数1は確保する
+            // 10をランダムに分割
             let total = 10;
             let power = Math.floor(Math.random() * (total - 1)) + 1; // 1〜9
             let count = total - power;
             ui.print(`  > 蝶付与: 威力${power} / 回数${count}`);
-            op.addStatus(new StatusEffect('蝶', 'buff', power, count));
+            op.addStatus(new StatusEffect('蝶', 'debuff', power, count));
         },
         jokerEffect: (me, op) => {
             ui.print(`⚰️ [JOKER] 葬儀`, 'c-p1');
             ui.print(`  > 通常攻撃3回`, 'c-dmg');
-            // 通常攻撃(1ダメx2)を3回行う
+            
+            // 3回攻撃（蝶がついている場合、この攻撃それぞれで蝶が発動し、回数を消費します）
             for(let i=0; i<3; i++) {
                 op.receiveDamage(1, me);
                 op.receiveDamage(1, me);
             }
-            // 蝶の起爆
+
+            // 蝶の起爆 (まだ残っていれば)
             let idx = op.statusList.findIndex(s => s.name === '蝶');
             if (idx !== -1) {
                 let butterfly = op.statusList[idx];
-                ui.print(`  > 蝶炸裂! ${butterfly.val1}ダメージ!`, 'c-dmg');
-                op.receiveDamage(butterfly.val1, me);
-                // 威力と回数を0に（削除）
-                op.statusList.splice(idx, 1);
+                ui.print(`  > 蝶炸裂! 残り${butterfly.val1}ダメージ!`, 'c-dmg');
+                op.receiveDamage(butterfly.val1, me); // 最後に威力分ダメージ
+                op.statusList.splice(idx, 1); // 削除
             } else {
-                ui.print(`  > 蝶がいなかった...`);
+                ui.print(`  > 蝶はすべて飛び去っていた...`);
             }
         }
     }
@@ -212,13 +211,12 @@ class StatusEffect {
             owner.hp -= this.val1; 
             this.val2 -= 1;
         }
-        // ★蝶 (カウンター)
-        // attackerが存在し（毒などの自傷でない）、かつ攻撃を受けた場合
-        if (this.name === '蝶' && attacker && damageAmount > 0) {
-            ui.print(`🦋 [蝶] カウンター発動! ${this.val1}ダメージ`, 'c-dmg');
-            // カウンターのダメージではカウンター返しが起きないように null を渡す
-            attacker.receiveDamage(this.val1, null);
-            this.val2 -= 1;
+        // ★蝶 (被ダメージ増加)
+        // 攻撃を受けた時(damageAmount > 0)、威力分(val1)のダメージを追加で受ける
+        if (this.name === '蝶' && damageAmount > 0) {
+            ui.print(`🦋 [蝶] 追加ダメージ ${this.val1}!`, 'c-dmg');
+            this.val2 -= 1; // 回数減少
+            return damageAmount + this.val1; // ダメージ増加
         }
         return damageAmount;
     }
@@ -232,7 +230,7 @@ class StatusEffect {
         if (this.name === '死毒') return this.val1 <= 0;
         if (this.name === '負傷') return this.val2 <= 0;
         if (this.name === 'ブレイク反動') return true;
-        if (this.name === '蝶') return this.val2 <= 0; // 回数0で消滅
+        if (this.name === '蝶') return this.val2 <= 0;
         return false;
     }
 }
@@ -256,21 +254,26 @@ class Player {
         this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
     }
     addStatus(ef) {
-        // 蝶は重複させず、新規追加（上書きまたは別枠だが、ここでは別枠としてリストに追加する仕様にする）
-        // ただし同名スタック処理がある場合はここに書く
+        // ★重複処理（蝶も加算するように変更）
         let exist = this.statusList.find(e => e.name === ef.name);
-        if (exist && ef.name !== '蝶') { // 蝶は別個体として扱うか、仕様次第だが今回は簡易的に別枠許可(またはadd)
-            if (exist.name === '死毒') exist.val1 += ef.val1;
-            else if (exist.name === '負傷') { exist.val1 += ef.val1; exist.val2 += ef.val2; }
+        if (exist) {
+            if (exist.name === '死毒') {
+                exist.val1 += ef.val1;
+            } else if (exist.name === '負傷') {
+                exist.val1 += ef.val1; exist.val2 += ef.val2;
+            } else if (exist.name === '蝶') {
+                // 威力(val1)も回数(val2)も加算
+                exist.val1 += ef.val1; exist.val2 += ef.val2;
+                ui.print(`  > 蝶が群れを成した (威${exist.val1}/残${exist.val2})`);
+            }
         } else {
             this.statusList.push(ef);
         }
     }
-    // ★ damageSourceを追加 (nullなら効果ダメ)
     receiveDamage(amount, source) {
         let finalAmount = amount;
         
-        // ステータス効果による補正 & カウンター判定
+        // ステータス効果による補正
         [...this.statusList].forEach(s => {
             finalAmount = s.onTakeDamage(this, finalAmount, source);
         });
@@ -348,7 +351,7 @@ class Game {
         switch (card.type) {
             case CARD_TYPE.BLANK:
                 if (card.mode === CARD_MODE.ATTACK) { 
-                    // ★死蝶パッシブ: 1ダメx2回
+                    // 死蝶パッシブ: 1ダメx2回
                     if (winner.charData.id === 'shicho') {
                         ui.print(`🦋 往にし者へ祝辞を (1x2)`, 'c-dmg');
                         loser.receiveDamage(1, winner);
