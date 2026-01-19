@@ -2,118 +2,46 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Card Game Battle GUI - SC & Break Fix</title>
+    <title>Card Game - Death Butterfly</title>
     <style>
-        /* --- 全体のレイアウト --- */
-        body {
-            background-color: #202020;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* --- 画面切り替え用 --- */
+        /* --- CSSは前回と同じですが、念のためすべて含めます --- */
+        body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .screen { width: 100%; height: 100%; display: none; }
         .active-screen { display: flex; }
-
-        /* --- タイトル画面 --- */
-        #title-screen {
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%);
-            z-index: 200;
-        }
+        #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; }
         h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         p.subtitle { color: #aaa; margin-bottom: 40px; }
         #char-list { display: flex; gap: 30px; }
-        .char-select-card {
-            width: 220px;
-            background: #333;
-            border: 2px solid #555;
-            border-radius: 10px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            display: flex; flex-direction: column; justify-content: space-between;
-        }
+        .char-select-card { width: 220px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; }
         .char-select-card:hover { transform: translateY(-10px); border-color: #00bcd4; background: #3a3a3a; }
         .char-icon { font-size: 50px; margin-bottom: 10px; }
         .char-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #fff; }
         .char-stats { font-size: 14px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.6; }
-
-        /* --- ゲーム画面 --- */
-        #game-area {
-            flex: 7;
-            display: flex; flex-direction: column;
-            border-right: 2px solid #444;
-            background: radial-gradient(circle at center, #2a2a2a, #1a1a1a);
-            position: relative;
-        }
-        #log-area {
-            flex: 3; background: #111; padding: 10px; overflow-y: auto;
-            font-family: 'Consolas', monospace; font-size: 14px; border-left: 1px solid #333;
-        }
-        .player-zone {
-            flex: 1; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; padding: 10px;
-        }
-        #battle-zone {
-            flex: 1.5; border-top: 1px solid #444; border-bottom: 1px solid #444;
-            display: flex; justify-content: center; align-items: center; gap: 40px;
-            background-color: rgba(0,0,0,0.2);
-        }
-        .status-box {
-            width: 80%; background: rgba(0,0,0,0.5); padding: 10px;
-            border-radius: 8px; margin-bottom: 10px; text-align: center;
-        }
-        .hp-bar-bg {
-            width: 100%; height: 15px; background: #555;
-            border-radius: 10px; margin-top: 5px; overflow: hidden;
-        }
-        .hp-bar-fill {
-            height: 100%; background: linear-gradient(90deg, #4caf50, #81c784);
-            width: 100%; transition: width 0.5s ease;
-        }
+        #game-area { flex: 7; display: flex; flex-direction: column; border-right: 2px solid #444; background: radial-gradient(circle at center, #2a2a2a, #1a1a1a); position: relative; }
+        #log-area { flex: 3; background: #111; padding: 10px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 14px; border-left: 1px solid #333; }
+        .player-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
+        #battle-zone { flex: 1.5; border-top: 1px solid #444; border-bottom: 1px solid #444; display: flex; justify-content: center; align-items: center; gap: 40px; background-color: rgba(0,0,0,0.2); }
+        .status-box { width: 80%; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+        .hp-bar-bg { width: 100%; height: 15px; background: #555; border-radius: 10px; margin-top: 5px; overflow: hidden; }
+        .hp-bar-fill { height: 100%; background: linear-gradient(90deg, #4caf50, #81c784); width: 100%; transition: width 0.5s ease; }
         .status-icons { margin-top: 5px; font-size: 14px; color: #ffcc00; min-height: 20px;}
-
-        /* カード */
         .hand-container { display: flex; gap: 15px; justify-content: center; perspective: 1000px; }
-        .card {
-            width: 100px; height: 140px; background: #fff; color: #000;
-            border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between;
-            padding: 10px; box-sizing: border-box; position: relative;
-            cursor: pointer; transition: transform 0.2s; user-select: none;
-        }
+        .card { width: 100px; height: 140px; background: #fff; color: #000; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; box-sizing: border-box; position: relative; cursor: pointer; transition: transform 0.2s; user-select: none; }
         .card:hover { transform: translateY(-15px) scale(1.05); z-index: 10; }
         .card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; pointer-events: none; }
-        
         .card-blank { border: 2px solid #ccc; background: linear-gradient(135deg, #fff, #f0f0f0); }
         .card-skill { border: 2px solid #ffd700; background: linear-gradient(135deg, #fff, #fffde7); }
         .card-joker { border: 2px solid #9c27b0; background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #4a148c; }
         .card-break { border: 2px solid #00bcd4; background: linear-gradient(135deg, #e0f7fa, #b2ebf2); color: #006064; }
-        
         .card-top { font-size: 18px; font-weight: bold; }
         .card-center { font-size: 32px; text-align: center; margin-top: 10px; }
         .card-name { font-size: 10px; text-align: center; color: #555; font-weight: bold; }
-
-        /* モーダル */
-        #modal-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); display: none;
-            justify-content: center; align-items: center; z-index: 100;
-        }
+        #modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100; }
         .modal-content { background: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #777; }
         .btn { background: #0e639c; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 4px; font-size: 16px; }
         .btn:hover { background: #1177bb; }
         .btn-atk { background: #d32f2f; }
         .btn-def { background: #1976d2; }
-
         .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .c-p1 { color: #64b5f6; }
         .c-p2 { color: #e57373; }
@@ -122,13 +50,11 @@
     </style>
 </head>
 <body>
-
     <div id="title-screen" class="screen active-screen">
         <h1>CARD BATTLE</h1>
         <p class="subtitle">キャラクターを選択してバトル開始</p>
         <div id="char-list"></div>
     </div>
-
     <div id="game-screen" class="screen">
         <div id="game-area">
             <div class="player-zone">
@@ -141,14 +67,12 @@
                 </div>
                 <div class="hand-container" id="p2-hand-view" style="opacity: 0.7; transform: scale(0.8);"></div>
             </div>
-
             <div id="battle-zone">
                 <div style="position:absolute; color:#aaa; top: 10px;">BATTLE FIELD</div>
                 <div id="p1-play-card"></div>
                 <div style="font-size:30px; font-weight:bold;">VS</div>
                 <div id="p2-play-card"></div>
             </div>
-
             <div class="player-zone">
                 <div class="hand-container" id="p1-hand-view"></div>
                 <div class="status-box" style="margin-top: 20px;">
@@ -159,19 +83,9 @@
                     <div>JKP: <span id="p1-jkp">0</span> / SC: <span id="p1-sc">0</span></div>
                 </div>
             </div>
-
-            <div id="modal-overlay">
-                <div class="modal-content">
-                    <h3 id="modal-title">選択してください</h3>
-                    <div id="modal-buttons"></div>
-                </div>
-            </div>
+            <div id="modal-overlay"><div class="modal-content"><h3 id="modal-title"></h3><div id="modal-buttons"></div></div></div>
         </div>
-
-        <div id="log-area">
-            <div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div>
-            <div id="logs"></div>
-        </div>
+        <div id="log-area"><div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div><div id="logs"></div></div>
     </div>
 
 <script>
@@ -184,7 +98,7 @@ const CARD_MODE = { ATTACK: 'attack', DEFENSE: 'defense' };
 const CHARACTERS = {
     berserker: {
         id: 'berserker', name: "バーサーカー", icon: "👹",
-        maxHp: 20, jkpCost: 8, scMax: 0, // ★SC設定
+        maxHp: 20, jkpCost: 8, scMax: 0,
         description: "攻撃特化型。<br>HPは低いが、通常攻撃の威力が高く、ジョーカーで強力な継続ダメージを与える。",
         passive: (p, type, data) => {
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
@@ -194,18 +108,18 @@ const CHARACTERS = {
         },
         skillEffect: (me, op, val) => {
             ui.print(`⚔️ [スキル] 双撃!`, 'c-p1');
-            op.receiveDamage(2); op.receiveDamage(2);
+            op.receiveDamage(2, me); op.receiveDamage(2, me);
             op.addStatus(new StatusEffect('負傷', 'debuff', 1, 1));
         },
         jokerEffect: (me, op) => {
             ui.print(`👹 [JOKER] 怪力乱神!`, 'c-p1');
             op.addStatus(new StatusEffect('負傷', 'debuff', 1, 20));
-            op.receiveDamage(2);
+            op.receiveDamage(2, me);
         }
     },
     venom: {
         id: 'venom', name: "ヴェノム", icon: "🧪",
-        maxHp: 36, jkpCost: 0, scMax: 0, // ★SC設定
+        maxHp: 36, jkpCost: 0, scMax: 0,
         description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => {
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) {
@@ -225,9 +139,46 @@ const CHARACTERS = {
                 let dmg = Math.floor(poison.val1 / 2);
                 let heal = Math.floor(dmg / 2);
                 ui.print(`毒吸収: ${dmg}ダメ, ${heal}回復`, 'c-dmg');
-                op.receiveDamage(dmg);
+                op.receiveDamage(dmg, me);
                 me.hp += heal;
                 op.statusList.splice(idx, 1);
+            }
+        }
+    },
+    // ★新キャラ
+    shicho: {
+        id: 'shicho', name: "死蝶", icon: "🦋",
+        maxHp: 24, jkpCost: 4, scMax: 0,
+        description: "カウンター型。<br>「蝶」を相手に植え付け、攻撃を受けた際にダメージを反射する。<br>パッシブにより通常攻撃が2回ヒットになる。",
+        passive: null, // ロジック内で処理
+        skillEffect: (me, op, val) => {
+            ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1');
+            // 10をランダムに分割 (威力:val1, 回数:val2)
+            // 少なくとも威力1, 回数1は確保する
+            let total = 10;
+            let power = Math.floor(Math.random() * (total - 1)) + 1; // 1〜9
+            let count = total - power;
+            ui.print(`  > 蝶付与: 威力${power} / 回数${count}`);
+            op.addStatus(new StatusEffect('蝶', 'buff', power, count));
+        },
+        jokerEffect: (me, op) => {
+            ui.print(`⚰️ [JOKER] 葬儀`, 'c-p1');
+            ui.print(`  > 通常攻撃3回`, 'c-dmg');
+            // 通常攻撃(1ダメx2)を3回行う
+            for(let i=0; i<3; i++) {
+                op.receiveDamage(1, me);
+                op.receiveDamage(1, me);
+            }
+            // 蝶の起爆
+            let idx = op.statusList.findIndex(s => s.name === '蝶');
+            if (idx !== -1) {
+                let butterfly = op.statusList[idx];
+                ui.print(`  > 蝶炸裂! ${butterfly.val1}ダメージ!`, 'c-dmg');
+                op.receiveDamage(butterfly.val1, me);
+                // 威力と回数を0に（削除）
+                op.statusList.splice(idx, 1);
+            } else {
+                ui.print(`  > 蝶がいなかった...`);
             }
         }
     }
@@ -237,9 +188,7 @@ const CHARACTERS = {
 // クラス定義
 // ==========================================
 class Card {
-    constructor(type) {
-        this.type = type; this.value = 0; this.mode = CARD_MODE.ATTACK; this.initValue();
-    }
+    constructor(type) { this.type = type; this.value = 0; this.mode = CARD_MODE.ATTACK; this.initValue(); }
     initValue() {
         if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) this.value = Math.floor(Math.random() * 13) + 1;
         else if (this.type === CARD_TYPE.JOKER) this.value = 14;
@@ -251,17 +200,24 @@ class StatusEffect {
     constructor(name, type, value1, value2 = null) {
         this.name = name; this.type = type; this.val1 = value1; this.val2 = value2;
     }
-    // ダメージを受ける直前に呼ばれる
-    onTakeDamage(owner, damageAmount) {
-        // ★修正点: スペルブレイクのペナルティ処理
+    onTakeDamage(owner, damageAmount, attacker) {
+        // スペルブレイク反動
         if (this.name === 'ブレイク反動') {
             ui.print(`⚡ [ブレイク反動] 被ダメージ+1`, 'c-dmg');
-            return damageAmount + 1; // ダメージを1増やす
+            return damageAmount + 1;
         }
-        
+        // 負傷
         if (this.name === '負傷' && this.val2 > 0) {
             ui.print(`🩸 [負傷] 追加ダメージ ${this.val1}!`, 'c-dmg');
             owner.hp -= this.val1; 
+            this.val2 -= 1;
+        }
+        // ★蝶 (カウンター)
+        // attackerが存在し（毒などの自傷でない）、かつ攻撃を受けた場合
+        if (this.name === '蝶' && attacker && damageAmount > 0) {
+            ui.print(`🦋 [蝶] カウンター発動! ${this.val1}ダメージ`, 'c-dmg');
+            // カウンターのダメージではカウンター返しが起きないように null を渡す
+            attacker.receiveDamage(this.val1, null);
             this.val2 -= 1;
         }
         return damageAmount;
@@ -269,13 +225,14 @@ class StatusEffect {
     onTurnEnd(owner) {
         if (this.name === '死毒') {
             const dmg = 2; ui.print(`☠️ [死毒] ${owner.name}に${dmg}ダメージ`, 'c-dmg');
-            owner.receiveDamage(dmg); this.val1 -= 1;
+            owner.receiveDamage(dmg, null); this.val1 -= 1;
         }
     }
     isExpired() {
         if (this.name === '死毒') return this.val1 <= 0;
         if (this.name === '負傷') return this.val2 <= 0;
-        if (this.name === 'ブレイク反動') return true; // 1ターンで消滅
+        if (this.name === 'ブレイク反動') return true;
+        if (this.name === '蝶') return this.val2 <= 0; // 回数0で消滅
         return false;
     }
 }
@@ -286,7 +243,7 @@ class Player {
         this.name = this.charData.name;
         this.hp = this.charData.maxHp;
         this.jkp = 0;
-        this.sc = 0; // ★SC初期化
+        this.sc = 0;
         this.hand = [];
         this.statusList = [];
     }
@@ -299,20 +256,23 @@ class Player {
         this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
     }
     addStatus(ef) {
+        // 蝶は重複させず、新規追加（上書きまたは別枠だが、ここでは別枠としてリストに追加する仕様にする）
+        // ただし同名スタック処理がある場合はここに書く
         let exist = this.statusList.find(e => e.name === ef.name);
-        if (exist) {
+        if (exist && ef.name !== '蝶') { // 蝶は別個体として扱うか、仕様次第だが今回は簡易的に別枠許可(またはadd)
             if (exist.name === '死毒') exist.val1 += ef.val1;
             else if (exist.name === '負傷') { exist.val1 += ef.val1; exist.val2 += ef.val2; }
-        } else this.statusList.push(ef);
+        } else {
+            this.statusList.push(ef);
+        }
     }
-    receiveDamage(amount) {
-        // デバフなどによるダメージ補正計算
+    // ★ damageSourceを追加 (nullなら効果ダメ)
+    receiveDamage(amount, source) {
         let finalAmount = amount;
         
-        // onTakeDamageは「補正後のダメージ」を返すように変更
-        // 配列コピーして回す(処理中に消える可能性があるため)
+        // ステータス効果による補正 & カウンター判定
         [...this.statusList].forEach(s => {
-            finalAmount = s.onTakeDamage(this, finalAmount);
+            finalAmount = s.onTakeDamage(this, finalAmount, source);
         });
 
         this.statusList = this.statusList.filter(s => !s.isExpired());
@@ -330,14 +290,10 @@ class Game {
         this.turn = 1;
     }
 
-    // カードが使用可能かチェック
     isCardPlayable(player, index) {
         const card = player.hand[index];
-        // JKPチェック
         if (card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) return false;
-        // ★SCチェック
         if (card.type === CARD_TYPE.SKILL && player.sc > 0) return false;
-        
         return true;
     }
 
@@ -350,25 +306,16 @@ class Game {
         await ui.wait(800);
 
         let winner = null;
-        // ブレイク失敗判定用
-        let p1BreakFail = false; 
-        let p2BreakFail = false;
+        let p1BreakFail = false; let p2BreakFail = false;
 
-        // --- 勝敗判定 ---
-        // 1. ブレイク vs ジョーカー
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
-        
-        // 2. ブレイク vs その他 (ブレイク側の負け + ペナルティフラグ)
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; p1BreakFail = true; }
         else if (c2.type === CARD_TYPE.SPELL_BREAK) { winner = this.p1; p2BreakFail = true; }
-        
-        // 3. 数値勝負
         else {
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
-                // 同値
                 const p1Def = (c1.mode === CARD_MODE.DEFENSE);
                 const p2Def = (c2.mode === CARD_MODE.DEFENSE);
                 if (p1Def && !p2Def) winner = this.p1;
@@ -376,10 +323,6 @@ class Game {
             }
         }
 
-        // --- 結果適用 ---
-        
-        // ★修正点: ブレイク失敗(反動)の適用
-        // 勝敗に関わらず、ジョーカー以外にブレイクを使った場合は反動デバフを付与
         if (p1BreakFail) this.p1.addStatus(new StatusEffect('ブレイク反動', 'debuff', 1));
         if (p2BreakFail) this.p2.addStatus(new StatusEffect('ブレイク反動', 'debuff', 1));
 
@@ -388,12 +331,9 @@ class Game {
             const winCard = (winner === this.p1) ? c1 : c2;
             
             ui.print(`🏅 勝者: ${winner.name}`, 'c-sys');
-            
-            // ★SCセット (スキル使用時)
             if (winCard.type === CARD_TYPE.SKILL) {
                 winner.sc = winner.charData.scMax;
             }
-            
             this.applyCardEffect(winner, loser, winCard);
         } else {
             ui.print("Draw (引き分け)", 'c-sys');
@@ -401,7 +341,6 @@ class Game {
     }
 
     applyCardEffect(winner, loser, card) {
-        // パッシブ
         if (card.type === CARD_TYPE.BLANK && card.mode === CARD_MODE.ATTACK) {
              if (winner.charData.passive) winner.charData.passive(winner, 'attack_hit', { opponent: loser, card: card });
         }
@@ -409,8 +348,15 @@ class Game {
         switch (card.type) {
             case CARD_TYPE.BLANK:
                 if (card.mode === CARD_MODE.ATTACK) { 
-                    ui.print(`👊 通常攻撃 (威力:2)`, 'c-dmg'); 
-                    loser.receiveDamage(2); 
+                    // ★死蝶パッシブ: 1ダメx2回
+                    if (winner.charData.id === 'shicho') {
+                        ui.print(`🦋 往にし者へ祝辞を (1x2)`, 'c-dmg');
+                        loser.receiveDamage(1, winner);
+                        loser.receiveDamage(1, winner);
+                    } else {
+                        ui.print(`👊 通常攻撃 (威力:2)`, 'c-dmg'); 
+                        loser.receiveDamage(2, winner); 
+                    }
                 }
                 else ui.print(`🛡️ 防御成功`);
                 break;
@@ -443,6 +389,7 @@ const ui = {
         const setWidth = (id, percent) => document.getElementById(id).style.width = percent + '%';
         const getStatusTxt = (list) => list.map(s => {
             if(s.name === 'ブレイク反動') return `⚡反動`;
+            if(s.name === '蝶') return `🦋蝶(威${s.val1}/残${s.val2})`;
             return s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`;
         }).join(' ');
 
@@ -450,14 +397,14 @@ const ui = {
         setText('p1-hp-text', `${p1.hp} / ${p1.charData.maxHp}`);
         setWidth('p1-hp-bar', (p1.hp / p1.charData.maxHp) * 100);
         setText('p1-jkp', p1.jkp);
-        setText('p1-sc', p1.sc); // ★SC表示
+        setText('p1-sc', p1.sc); 
         setText('p1-status', getStatusTxt(p1.statusList));
 
         setText('p2-name', p2.name);
         setText('p2-hp-text', `${p2.hp} / ${p2.charData.maxHp}`);
         setWidth('p2-hp-bar', (p2.hp / p2.charData.maxHp) * 100);
         setText('p2-jkp', p2.jkp);
-        setText('p2-sc', p2.sc); // ★SC表示
+        setText('p2-sc', p2.sc);
         setText('p2-status', getStatusTxt(p2.statusList));
     },
     createCardElement: (card, isHidden = false, onClick = null) => {
@@ -477,16 +424,12 @@ const ui = {
         const container = isPlayerControlled ? document.getElementById('p1-hand-view') : document.getElementById('p2-hand-view');
         container.innerHTML = '';
         player.hand.forEach((card, index) => {
-            // ★使用可能チェック
             let isPlayable = true;
-            if(!isPlayerControlled) isPlayable = true; // CPU用
+            if(!isPlayerControlled) isPlayable = true; 
             else {
-                // JKP不足
                 if(card.type === CARD_TYPE.JOKER && player.jkp < player.charData.jkpCost) isPlayable = false;
-                // SC中
                 if(card.type === CARD_TYPE.SKILL && player.sc > 0) isPlayable = false;
             }
-
             const cardEl = ui.createCardElement(card, !isPlayerControlled, () => {
                 if (isPlayerControlled && isPlayable && callback) callback(index);
             });
@@ -553,10 +496,7 @@ async function startGame(playerCharKey) {
 
         if (game.p1.hp <= 0 || game.p2.hp <= 0) break;
 
-        // ターン終了処理 (SC減少 & 状態異常)
         game.p1.jkp++; game.p2.jkp++;
-        
-        // ★SC減少
         if(game.p1.sc > 0) game.p1.sc--;
         if(game.p2.sc > 0) game.p2.sc--;
 
@@ -601,7 +541,6 @@ async function autoSelect(player, game) {
 }
 
 initCharSelect();
-
 </script>
 </body>
 </html>
