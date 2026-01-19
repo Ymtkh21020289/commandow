@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Online Card Battle</title>
     <style>
-        /* CSSは変更なし */
         body { background-color: #202020; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .screen { width: 100%; height: 100%; display: none; }
         .active-screen { display: flex; }
@@ -18,7 +17,34 @@
         .char-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #fff; }
         .char-stats { font-size: 14px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.6; }
         #game-area { flex: 7; display: flex; flex-direction: column; border-right: 2px solid #444; background: radial-gradient(circle at center, #2a2a2a, #1a1a1a); position: relative; }
-        #log-area { flex: 3; background: #111; padding: 10px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 14px; border-left: 1px solid #333; }
+        
+        /* --- 修正: ログエリアの改善 --- */
+        #log-area { 
+            flex: 3; 
+            background: #111; 
+            display: flex; 
+            flex-direction: column; /* 縦並びにしてタイトルとリストを分離 */
+            border-left: 1px solid #333; 
+            height: 100%;
+        }
+        #log-title {
+            padding: 10px;
+            text-align: center;
+            color: #888;
+            border-bottom: 1px solid #555;
+            background: #1a1a1a;
+            flex-shrink: 0; /* タイトルは縮まない */
+        }
+        #logs { 
+            flex-grow: 1; /* 残りのスペースを全て使う */
+            overflow-y: auto; /* ここだけスクロールさせる */
+            padding: 10px;
+            font-family: 'Consolas', monospace; 
+            font-size: 14px; 
+            scroll-behavior: smooth;
+        }
+        /* --------------------------- */
+
         .player-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
         #battle-zone { flex: 1.5; border-top: 1px solid #444; border-bottom: 1px solid #444; display: flex; justify-content: center; align-items: center; gap: 40px; background-color: rgba(0,0,0,0.2); }
         .status-box { width: 80%; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
@@ -94,7 +120,10 @@
             </div>
             <div id="modal-overlay"><div class="modal-content"><h3 id="modal-title"></h3><div id="modal-buttons"></div></div></div>
         </div>
-        <div id="log-area"><div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div><div id="logs"></div></div>
+        <div id="log-area">
+            <div id="log-title">BATTLE LOG</div>
+            <div id="logs"></div>
+        </div>
     </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -244,6 +273,17 @@ class Game {
         ui.print(`⚔️ バトル判定...`);
         await ui.wait(800);
 
+        // ★修正: 使用した瞬間にJKPを消費（発動成否に関わらず）
+        if (c1.type === CARD_TYPE.JOKER) {
+            ui.print(`${this.p1.name}はJKPを消費!`);
+            this.p1.jkp -= this.p1.charData.jkpCost;
+        }
+        if (c2.type === CARD_TYPE.JOKER) {
+            ui.print(`${this.p2.name}はJKPを消費!`);
+            this.p2.jkp -= this.p2.charData.jkpCost;
+        }
+        ui.updateStatus(this.p1, this.p2); // ゲージ反映
+
         let winner = null;
         let p1BreakFail = false; let p2BreakFail = false;
 
@@ -294,7 +334,10 @@ class Game {
                 } else ui.print(`🛡️ 防御成功`);
                 break;
             case CARD_TYPE.SKILL: winner.charData.skillEffect(winner, loser, card.value); break;
-            case CARD_TYPE.JOKER: winner.jkp -= winner.charData.jkpCost; winner.charData.jokerEffect(winner, loser); break;
+            case CARD_TYPE.JOKER: 
+                // ★修正: ここでのJKP消費を削除（判定前に消費済みのため）
+                winner.charData.jokerEffect(winner, loser); 
+                break;
             case CARD_TYPE.SPELL_BREAK: ui.print(`✨ スペルブレイク成功`); break;
         }
     }
@@ -308,7 +351,9 @@ const ui = {
     showGameScreen: () => { document.getElementById('title-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'flex'; },
     print: (text, type = '') => {
         const div = document.createElement('div'); div.textContent = text; div.className = 'log-entry ' + type;
-        ui.logs.appendChild(div); ui.logs.scrollTop = ui.logs.scrollHeight;
+        ui.logs.appendChild(div); 
+        // ★修正: リストの一番下へスクロール
+        ui.logs.scrollTop = ui.logs.scrollHeight;
     },
     updateStatus: (p1, p2) => {
         let me, op;
@@ -482,7 +527,7 @@ async function startGame() {
 
     ui.print("=== GAME SET ===", 'c-sys');
     
-    // ★修正: 引き分け判定の追加
+    // 引き分け判定
     if (game.p1.hp <= 0 && game.p2.hp <= 0) {
         await ui.showModal("DRAW GAME", [{ label: "タイトルへ戻る", value: "retry" }]);
     } else {
