@@ -8,22 +8,38 @@
         .screen { width: 100%; height: 100%; display: none; }
         .active-screen { display: flex; }
         
-        /* タイトル画面 */
-        #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; position: relative; }
-        h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-        p.subtitle { color: #aaa; margin-bottom: 40px; font-size: 20px; }
-        #char-list { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; max-width: 1200px; }
-        .char-select-card { width: 200px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 15px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; }
+        /* タイトル画面 (修正: スクロール対応) */
+        #title-screen { 
+            flex-direction: column; 
+            justify-content: flex-start; /* 上詰めにしてスクロール可能にする */
+            align-items: center; 
+            background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); 
+            z-index: 200; 
+            position: relative; 
+            overflow-y: auto; /* 縦スクロール許可 */
+            padding-top: 80px; /* 上部余白 */
+            padding-bottom: 50px; /* 下部余白 */
+            box-sizing: border-box;
+        }
+        
+        h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); flex-shrink: 0; }
+        p.subtitle { color: #aaa; margin-bottom: 40px; font-size: 20px; flex-shrink: 0; }
+        
+        #char-list { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; max-width: 1200px; width: 100%; padding: 0 20px; box-sizing: border-box; }
+        
+        .char-select-card { width: 200px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 15px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
         .char-select-card:hover { transform: translateY(-10px); border-color: #00bcd4; background: #3a3a3a; }
         .char-icon { font-size: 40px; margin-bottom: 10px; }
         .char-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #fff; }
         .char-stats { font-size: 13px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.5; }
 
-        /* 接続人数表示 */
+        /* 接続人数表示 (修正: 固定表示) */
         #online-counter {
-            position: absolute; top: 20px; left: 20px; font-size: 18px; color: #00bcd4;
+            position: fixed; /* absoluteからfixedに変更 */
+            top: 20px; left: 20px; font-size: 18px; color: #00bcd4;
             background: rgba(0, 0, 0, 0.6); padding: 8px 15px; border-radius: 20px;
             border: 1px solid #00bcd4; display: flex; align-items: center; gap: 8px;
+            z-index: 210;
         }
         .live-indicator { width: 10px; height: 10px; background-color: #00ff00; border-radius: 50%; box-shadow: 0 0 8px #00ff00; }
 
