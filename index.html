@@ -12,34 +12,43 @@
         #title-screen { flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle, #2b2b2b 0%, #1a1a1a 100%); z-index: 200; position: relative; }
         h1 { font-size: 48px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         p.subtitle { color: #aaa; margin-bottom: 40px; font-size: 20px; }
-        
-        /* キャラ選択 */
-        #char-list { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 1200px; }
+        #char-list { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; max-width: 1200px; }
         .char-select-card { width: 200px; background: #333; border: 2px solid #555; border-radius: 10px; padding: 15px; cursor: pointer; transition: all 0.3s; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; }
         .char-select-card:hover { transform: translateY(-10px); border-color: #00bcd4; background: #3a3a3a; }
         .char-icon { font-size: 40px; margin-bottom: 10px; }
         .char-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #fff; }
         .char-stats { font-size: 13px; color: #ccc; text-align: left; margin-top: 10px; line-height: 1.5; }
-        
+
+        /* 接続人数表示 */
+        #online-counter {
+            position: absolute; top: 20px; left: 20px; font-size: 18px; color: #00bcd4;
+            background: rgba(0, 0, 0, 0.6); padding: 8px 15px; border-radius: 20px;
+            border: 1px solid #00bcd4; display: flex; align-items: center; gap: 8px;
+        }
+        .live-indicator { width: 10px; height: 10px; background-color: #00ff00; border-radius: 50%; box-shadow: 0 0 8px #00ff00; }
+
         /* ゲーム画面レイアウト */
         #game-area { flex: 7; display: flex; flex-direction: column; border-right: 2px solid #444; background: radial-gradient(circle at center, #2a2a2a, #1a1a1a); position: relative; }
-        #log-area { flex: 3; background: #111; padding: 10px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 14px; border-left: 1px solid #333; }
         
-        /* プレイヤーゾーン & バトルゾーン */
+        /* ログエリア */
+        #log-area { flex: 3; background: #111; display: flex; flex-direction: column; border-left: 1px solid #333; height: 100%; }
+        #log-title { padding: 10px; text-align: center; color: #888; border-bottom: 1px solid #555; background: #1a1a1a; flex-shrink: 0; }
+        #logs { flex-grow: 1; overflow-y: auto; padding: 10px; font-family: 'Consolas', monospace; font-size: 14px; scroll-behavior: smooth; }
+        
+        /* プレイヤーゾーン・カード */
         .player-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
         #battle-zone { flex: 1.5; border-top: 1px solid #444; border-bottom: 1px solid #444; display: flex; justify-content: center; align-items: center; gap: 40px; background-color: rgba(0,0,0,0.2); }
-        
-        /* ステータス表示 */
         .status-box { width: 80%; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
         .hp-bar-bg { width: 100%; height: 15px; background: #555; border-radius: 10px; margin-top: 5px; overflow: hidden; }
         .hp-bar-fill { height: 100%; background: linear-gradient(90deg, #4caf50, #81c784); width: 100%; transition: width 0.5s ease; }
         .status-icons { margin-top: 5px; font-size: 14px; color: #ffcc00; min-height: 20px;}
         
-        /* カードデザイン */
         .hand-container { display: flex; gap: 15px; justify-content: center; perspective: 1000px; }
         .card { width: 100px; height: 140px; background: #fff; color: #000; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; box-sizing: border-box; position: relative; cursor: pointer; transition: transform 0.2s; user-select: none; }
         .card:hover { transform: translateY(-15px) scale(1.05); z-index: 10; }
         .card.disabled { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; pointer-events: none; }
+        
+        /* カード種別ごとの色 */
         .card-blank { border: 2px solid #ccc; background: linear-gradient(135deg, #fff, #f0f0f0); }
         .card-skill { border: 2px solid #ffd700; background: linear-gradient(135deg, #fff, #fffde7); }
         .card-joker { border: 2px solid #9c27b0; background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #4a148c; }
@@ -47,47 +56,75 @@
         .card-top { font-size: 18px; font-weight: bold; }
         .card-center { font-size: 32px; text-align: center; margin-top: 10px; }
         .card-name { font-size: 10px; text-align: center; color: #555; font-weight: bold; }
-        
-        /* モーダル & UI */
+
+        /* モーダル */
         #modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #777; }
+        .modal-content { background: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #777; min-width: 300px; }
+        
+        /* 汎用ボタン */
         .btn { background: #0e639c; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 4px; font-size: 16px; }
         .btn:hover { background: #1177bb; }
         .btn-atk { background: #d32f2f; }
         .btn-def { background: #1976d2; }
-        
-        /* ログ & テキスト */
+
+        /* ログ装飾 */
         .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
         .c-p1 { color: #64b5f6; }
         .c-p2 { color: #e57373; }
         .c-sys { color: #81c784; }
         .c-dmg { color: #ffb74d; font-weight: bold; }
+        
+        /* ロード表示 */
         .loading-text { font-size: 20px; color: #00bcd4; margin-top: 20px; animation: blink 1.5s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* 追加機能用スタイル */
-        #online-count { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 15px; font-size: 14px; color: #00ff00; z-index: 250; }
-        #volume-control { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 10px; z-index: 250; }
-        #volume-slider { width: 100px; cursor: pointer; }
-        .vol-label { font-size: 12px; color: #aaa; }
-
+        /* 設定ボタン */
+        #btn-settings {
+            position: fixed; top: 20px; right: 20px; z-index: 300;
+            font-size: 30px; cursor: pointer; opacity: 0.7; transition: opacity 0.3s;
+            text-shadow: 0 0 5px #000;
+        }
+        #btn-settings:hover { opacity: 1; transform: rotate(90deg); transition: transform 0.5s; }
+        
+        #settings-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; 
+            justify-content: center; align-items: center; z-index: 400;
+        }
+        .settings-content {
+            background: #222; padding: 30px; border-radius: 10px; border: 2px solid #555;
+            text-align: center; width: 300px;
+        }
+        .volume-control { margin: 20px 0; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .close-settings { margin-top: 20px; background: #555; }
     </style>
 </head>
 <body>
-    <div id="online-count">Online: 1</div>
+    <div id="btn-settings" onclick="toggleSettings()">⚙️</div>
 
-    <div id="title-screen" class="screen active-screen">
-        <h1>ONLINE BATTLE</h1>
-        <p class="subtitle" id="status-msg">キャラクターを選択してマッチング開始</p>
-        <div id="char-list"></div>
-        <div id="wait-msg" class="loading-text" style="display:none;">対戦相手を探しています...</div>
-        <div id="volume-control">
-            <span class="vol-label">Volume</span>
-            <input type="range" id="volume-slider" min="0" max="100" value="50">
-            <span id="vol-val" class="vol-label">50%</span>
+    <div id="settings-modal">
+        <div class="settings-content">
+            <h2>SETTINGS</h2>
+            <div class="volume-control">
+                <label for="bgm-slider">BGM Volume: <span id="vol-value">50</span>%</label>
+                <br><br>
+                <input type="range" id="bgm-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)">
+            </div>
+            <button class="btn close-settings" onclick="toggleSettings()">CLOSE</button>
         </div>
     </div>
 
+    <div id="title-screen" class="screen active-screen">
+        <div id="online-counter">
+            <div class="live-indicator"></div>
+            <span>Online: <span id="online-count-num">-</span></span>
+        </div>
+        <h1>コマンドーバトル！！！</h1>
+        <p class="subtitle" id="status-msg">キャラクターを選択してマッチング開始</p>
+        <div id="char-list"></div>
+        <div id="wait-msg" class="loading-text" style="display:none;">対戦相手を探しています...</div>
+    </div>
     <div id="game-screen" class="screen">
         <div id="game-area">
             <div class="player-zone">
@@ -124,61 +161,87 @@
             </div>
             <div id="modal-overlay"><div class="modal-content"><h3 id="modal-title"></h3><div id="modal-buttons"></div></div></div>
         </div>
-        <div id="log-area"><div style="text-align:center; color:#888; border-bottom:1px solid #555; margin-bottom:10px;">BATTLE LOG</div><div id="logs"></div></div>
+        <div id="log-area">
+            <div id="log-title">BATTLE LOG</div>
+            <div id="logs"></div>
+        </div>
     </div>
 
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
 // ==========================================
-// 音量設定
+// 音響管理 (BGM System)
 // ==========================================
-const volSlider = document.getElementById('volume-slider');
-const volVal = document.getElementById('vol-val');
-let masterVolume = 0.5;
-volSlider.addEventListener('input', (e) => {
-    masterVolume = e.target.value / 100;
-    volVal.textContent = e.target.value + "%";
-});
+const BGM_URL = 'bgm.mp3'; 
+const bgm = new Audio(BGM_URL);
+bgm.loop = true; 
+
+function initAudio() {
+    const savedVol = localStorage.getItem('bgm_volume');
+    const vol = savedVol !== null ? parseInt(savedVol) : 30; 
+    document.getElementById('bgm-slider').value = vol;
+    updateVolume(vol);
+}
+
+function updateVolume(val) {
+    document.getElementById('vol-value').textContent = val;
+    bgm.volume = val / 100;
+    localStorage.setItem('bgm_volume', val);
+}
+
+function toggleSettings() {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+}
+
+function startBGM() {
+    bgm.play().catch(e => console.log("BGM Play Error:", e));
+}
+
+initAudio();
 
 // ==========================================
-// 定数 & データ
+// 定数 & キャラクターデータ
 // ==========================================
 const CARD_TYPE = { BLANK: 'blank', SKILL: 'skill', JOKER: 'joker', SPELL_BREAK: 'break' };
 const CARD_MODE = { ATTACK: 'attack', DEFENSE: 'defense' };
 
+// 共通ヘルパー: ステータス取得
 const getStatusVal = (p, name) => { let s = p.statusList.find(x => x.name === name); return s ? s.val1 : 0; };
 
 const CHARACTERS = {
     berserker: {
         id: 'berserker', name: "バーサーカー", icon: "👹", maxHp: 20, jkpCost: 8, scMax: 0,
-        description: "攻撃特化型。<br>通常攻撃が高威力。ジョーカーで大ダメージを与える。",
+        description: "攻撃特化型。<br>HPは低いが、通常攻撃の威力が高く、ジョーカーで強力な継続ダメージを与える。",
         passive: (p, type, data) => { if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) { ui.print(`🔥 [パッシブ] JKP+1`); p.jkp += 1; } },
         skillEffect: (me, op, val) => { ui.print(`⚔️ [スキル] 双撃!`, 'c-p1'); op.receiveDamage(2, me); op.receiveDamage(2, me); op.addStatus(new StatusEffect('負傷', 'debuff', 1, 1)); },
         jokerEffect: (me, op) => { ui.print(`👹 [JOKER] 怪力乱神!`, 'c-p1'); op.addStatus(new StatusEffect('負傷', 'debuff', 1, 20)); op.receiveDamage(2, me); }
     },
     venom: {
         id: 'venom', name: "ヴェノム", icon: "🧪", maxHp: 36, jkpCost: 4, scMax: 0,
-        description: "耐久＆毒型。<br>高いHPと毒による継続ダメージで戦う。",
+        description: "耐久＆毒型。<br>高いHPを持ち、相手を徐々に削る。ジョーカーで相手の毒を吸収し回復する。",
         passive: (p, type, data) => { if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) { ui.print(`🧪 [パッシブ] 死毒+2`); data.opponent.addStatus(new StatusEffect('死毒', 'debuff', 2)); } },
         skillEffect: (me, op, val) => { ui.print(`🌫️ [スキル] ポイズンミスト!`, 'c-p2'); op.addStatus(new StatusEffect('死毒', 'debuff', 5)); },
         jokerEffect: (me, op) => { ui.print(`💉 [JOKER] オーバードーズ!`, 'c-p2'); let idx = op.statusList.findIndex(s => s.name === '死毒'); if (idx !== -1) { let poison = op.statusList[idx]; let dmg = Math.floor(poison.val1 / 2); let heal = Math.floor(dmg / 2); ui.print(`毒吸収: ${dmg}ダメ, ${heal}回復`, 'c-dmg'); op.receiveDamage(dmg, me); me.hp += heal; op.statusList.splice(idx, 1); } }
     },
     shicho: {
         id: 'shicho', name: "死蝶", icon: "🦋", maxHp: 24, jkpCost: 4, scMax: 0,
-        description: "コンボ火力型。<br>「蝶」を付与し、追撃ダメージを与える。",
+        description: "コンボ火力型。<br>「蝶」を相手に植え付ける。「蝶」は相手がダメージを受けるたびに追加ダメージを与える。",
         passive: null, 
         skillEffect: (me, op, val) => { 
             ui.print(`🦋 [スキル] 残りし者へ厳粛な哀悼を`, 'c-p1'); 
-            let total = 10; let power = (val % 9) + 1; let count = total - power; 
+            let total = 10; 
+            let power = (val % 9) + 1; 
+            let count = total - power; 
             ui.print(`  > 蝶付与: 威力${power} / 回数${count}`); 
             op.addStatus(new StatusEffect('蝶', 'debuff', power, count)); 
         },
-        jokerEffect: (me, op) => { ui.print(`⚰️ [JOKER] 葬儀`, 'c-p1'); ui.print(`  > 通常攻撃3回`, 'c-dmg'); for(let i=0; i<3; i++) { op.receiveDamage(1, me); op.receiveDamage(1, me); } let idx = op.statusList.findIndex(s => s.name === '蝶'); if (idx !== -1) { let butterfly = op.statusList[idx]; ui.print(`  > 蝶炸裂! 残り${butterfly.val1}ダメージ!`, 'c-dmg'); op.receiveDamage(butterfly.val1, me); op.statusList.splice(idx, 1); } }
+        jokerEffect: (me, op) => { ui.print(`⚰️ [JOKER] 葬儀`, 'c-p1'); ui.print(`  > 通常攻撃3回`, 'c-dmg'); for(let i=0; i<3; i++) { op.receiveDamage(1, me); op.receiveDamage(1, me); } let idx = op.statusList.findIndex(s => s.name === '蝶'); if (idx !== -1) { let butterfly = op.statusList[idx]; ui.print(`  > 蝶炸裂! 残り${butterfly.val1}ダメージ!`, 'c-dmg'); op.receiveDamage(butterfly.val1, me); op.statusList.splice(idx, 1); } else { ui.print(`  > 蝶はすべて飛び去っていた...`); } }
     },
     madan: {
-        id: 'madan', name: "魔弾", icon: "🔫", maxHp: 32, jkpCost: 0, scMax: 0,
-        description: "スタック管理型。<br>「魔弾」を装填し、数に応じてJOKERの効果が変化する。",
+        id: 'madan', name: "魔弾", icon: "🔫", maxHp: 32, jkpCost: 0, scMax: 0, 
+        description: "スタック管理型。<br>防御勝利やスキルで「魔弾」を装填し、数に応じてJOKERの効果が変化する。",
         passive: (p, type, data) => { if (type === 'defense_win') { ui.print(`🔫 [パッシブ] 弾丸装填 (魔弾+2)`); p.addStatus(new StatusEffect('魔弾', 'buff', 2)); } },
         skillEffect: (me, op, val) => {
             let bullets = getStatusVal(me, '魔弾');
@@ -192,60 +255,76 @@ const CHARACTERS = {
             let bullets = getStatusVal(me, '魔弾');
             ui.print(`💣 [JOKER] 魔弾掃射 (消費魔弾:${bullets})`, 'c-p1');
             let damage = 0; let gainBullets = 0; let resetBullets = false;
+            // 弾数による効果分岐
             if (bullets >= 1 && bullets <= 3) { damage = bullets * 2; op.receiveDamage(damage, me); op.addStatus(new StatusEffect('麻痺', 'debuff', Math.floor(bullets/2), 2)); gainBullets = 1; } 
             else if (bullets >= 4 && bullets <= 5) { damage = bullets * 3; op.receiveDamage(damage, me); op.addStatus(new StatusEffect('黒炎', 'debuff', bullets)); op.addStatus(new StatusEffect('麻痺', 'debuff', Math.floor(bullets/2), 2)); gainBullets = 2; } 
             else if (bullets === 6) { damage = bullets * 4; op.receiveDamage(damage, me); op.addStatus(new StatusEffect('黒炎', 'debuff', 6)); op.addStatus(new StatusEffect('麻痺', 'debuff', 3, 2)); gainBullets = 1; } 
             else if (bullets >= 7) { damage = bullets * 5; op.receiveDamage(damage, me); op.addStatus(new StatusEffect('黒炎', 'debuff', 7)); op.addStatus(new StatusEffect('麻痺', 'debuff', 7, 2)); if (op.hp > 0) { ui.print(`  > 敵生存...反動14`, 'c-dmg'); me.receiveDamage(14, me); } resetBullets = true; }
-            if (resetBullets) me.addStatus(new StatusEffect('魔弾', 'buff', -7));
-            else me.addStatus(new StatusEffect('魔弾', 'buff', gainBullets));
+            
+            // JKP(魔弾)消費処理
+            if (resetBullets) me.addStatus(new StatusEffect('魔弾', 'buff', -bullets)); // 全消費
+            else {
+                // 通常は全弾撃ち尽くすが、JOKER自体のリロード効果で少し戻る演出
+                me.addStatus(new StatusEffect('魔弾', 'buff', -bullets + gainBullets));
+            }
         }
     },
     bomber: {
-        id: 'bomber', name: "ボマー", icon: "💥", maxHp: 28, jkpCost: 6, scMax: 2,
-        description: "自爆特攻型。<br>同値で勝利するパッシブと、自身を傷つけながら大ダメージを与える戦法。",
+        id: 'bomber', name: "ボマー", icon: "🧨", maxHp: 28, jkpCost: 6, scMax: 2,
+        description: "自爆特攻型。<br>ドローを勝利に変えるパッシブと、次のターンの数値を13にする強力なジョーカーを持つ。",
         passive: (p, type, data) => { 
-            // 神速: 同値勝利はGameクラスで処理
-            // 通常攻撃的中時回復
             if (type === 'attack_hit' && data.card.type === CARD_TYPE.BLANK) { 
-                ui.print(`🔋 [パッシブ] エネルギー吸収 (HP+3)`); 
+                ui.print(`🧨 [パッシブ] 火薬回収: HP+3`); 
                 p.hp += 3;
                 if(p.hp > p.charData.maxHp) p.hp = p.charData.maxHp;
             } 
         },
-        skillEffect: (me, op, val) => {
-            ui.print(`🧨 [スキル] 自爆`, 'c-p1');
-            // 威力増加バフはreceiveDamage内でsourceをチェックして適用される
-            ui.print(`  > 自身に6ダメージ`);
+        skillEffect: (me, op, val) => { 
+            ui.print(`💣 [スキル] 自爆!!`, 'c-p1'); 
+            ui.print(`  > 自身に6ダメージ`, 'c-dmg');
             me.receiveDamage(6, me);
-            ui.print(`  > 相手に8ダメージ`);
+            ui.print(`  > 相手に8ダメージ`, 'c-dmg');
             op.receiveDamage(8, me);
         },
-        jokerEffect: (me, op) => {
-            ui.print(`⚡ [JOKER] 帯電`, 'c-p1');
-            ui.print(`  > 次ターンカード数値「13」確定`);
+        jokerEffect: (me, op) => { 
+            ui.print(`⚡ [JOKER] 帯電`, 'c-p1'); 
+            ui.print(`  > 次ターン数値13 & 威力増加付与`);
+            // 帯電: 次ターンドロー時に発動するため持続させる
             me.addStatus(new StatusEffect('帯電', 'buff', 1));
-            ui.print(`  > 威力増加獲得 (威力+6/2回)`);
+            // 威力増加: 威力6, 回数2 (ターン終了時-1)
             me.addStatus(new StatusEffect('威力増加', 'buff', 6, 2));
         }
     }
 };
 
+// ==========================================
+// 通信 & ゲーム管理変数
+// ==========================================
 const socket = io();
-let myRole = '', myCharId = '', opponentCharId = '', game = null, opponentMoveMailbox = {}; 
+let myRole = ''; 
+let myCharId = '';
+let opponentCharId = '';
+let game = null;
+let opponentMoveMailbox = {}; 
 
-socket.on('update_user_count', (count) => { document.getElementById('online-count').textContent = `Online: ${count}`; });
+socket.on('update_count', (count) => {
+    document.getElementById('online-count-num').textContent = count;
+});
 
 // ==========================================
-// クラス
+// クラス定義
 // ==========================================
 class Card {
     constructor(type, forcedValue = null) { 
-        this.type = type; this.value = 0; this.mode = CARD_MODE.ATTACK; 
+        this.type = type; 
+        this.value = 0; 
+        this.mode = CARD_MODE.ATTACK; 
         this.initValue(forcedValue); 
     }
     initValue(forcedValue) {
-        if (forcedValue !== null) { this.value = forcedValue; } 
-        else {
+        if (forcedValue !== null) {
+            this.value = forcedValue;
+        } else {
             if (this.type === CARD_TYPE.BLANK || this.type === CARD_TYPE.SKILL) this.value = Math.floor(Math.random() * 13) + 1;
             else if (this.type === CARD_TYPE.JOKER) this.value = 14;
             else if (this.type === CARD_TYPE.SPELL_BREAK) this.value = 0;
@@ -256,38 +335,44 @@ class Card {
 class StatusEffect {
     constructor(name, type, value1, value2 = null) { this.name = name; this.type = type; this.val1 = value1; this.val2 = value2; }
     
-    // ダメージを受ける側の処理
+    // 攻撃を与えた時の補正（ボマーのバフ用）
+    onDealDamage(owner, damageAmount) {
+        if (this.name === '威力増加') {
+            ui.print(`💪 [威力増加] ダメージ+${this.val1}!`, 'c-dmg');
+            return damageAmount + this.val1;
+        }
+        return damageAmount;
+    }
+
+    // 攻撃を受けた時の補正
     onTakeDamage(owner, damageAmount, attacker) {
         if (this.name === 'ブレイク反動') { ui.print(`⚡ [ブレイク反動] 被ダメージ+1`, 'c-dmg'); return damageAmount + 1; }
         if (this.name === '負傷' && this.val2 > 0) { ui.print(`🩸 [負傷] 追加ダメージ ${this.val1}!`, 'c-dmg'); owner.hp -= this.val1; this.val2 -= 1; }
         if (this.name === '蝶' && damageAmount > 0) { ui.print(`🦋 [蝶] 追加ダメージ ${this.val1}!`, 'c-dmg'); this.val2 -= 1; return damageAmount + this.val1; }
         return damageAmount;
     }
-    
-    // ダメージを与える側の処理（威力増加など）
-    onDealDamage(attacker, damageAmount) {
-        if (this.name === '威力増加' && this.val2 > 0) {
-            ui.print(`💪 [威力増加] ダメージ+${this.val1}`, 'c-dmg');
-            return damageAmount + this.val1;
-        }
-        return damageAmount;
-    }
 
     onTurnEnd(owner) {
         if (this.name === '死毒') { const dmg = 2; ui.print(`☠️ [死毒] ${owner.name}に${dmg}ダメージ`, 'c-dmg'); owner.receiveDamage(dmg, null); this.val1 -= 1; }
-        if (this.name === '黒炎') { const dmg = this.val1; ui.print(`🔥 [黒炎] ${owner.name}に${dmg}ダメージ`, 'c-dmg'); owner.receiveDamage(dmg, null); this.val1 = Math.floor(this.val1 / 2); }
-        if (this.name === '威力増加') { this.val2 -= 1; } // ターン経過で回数減
+        if (this.name === '威力増加') { this.val2 -= 1; }
+        if (this.name === '黒炎') { 
+            const dmg = this.val1; 
+            ui.print(`🔥 [黒炎] ${owner.name}に${dmg}ダメージ`, 'c-dmg'); 
+            owner.receiveDamage(dmg, null); 
+            this.val1 = Math.floor(this.val1 / 2); // ターン毎に威力半減
+        }
     }
-    
+
     isExpired() {
         if (this.name === '死毒') return this.val1 <= 0;
         if (this.name === '負傷') return this.val2 <= 0;
         if (this.name === 'ブレイク反動') return true;
         if (this.name === '蝶') return this.val2 <= 0;
-        if (this.name === '麻痺') return this.val2 <= 0;
-        if (this.name === '黒炎') return this.val1 <= 0;
         if (this.name === '威力増加') return this.val2 <= 0;
-        // 帯電はdrawHandで消費されるのでここでは判定しない（drawHandで削除）
+        if (this.name === '帯電') return false; // 帯電はdrawHandで消費される
+        if (this.name === '魔弾') return this.val1 < 0; // 魔弾は0でも残る（表示用）
+        if (this.name === '黒炎') return this.val1 <= 0;
+        if (this.name === '麻痺') return this.val2 <= 0;
         return false;
     }
 }
@@ -303,38 +388,35 @@ class Player {
     }
     drawHand() {
         this.hand = [];
-        // 手札生成
         this.hand.push(new Card(CARD_TYPE.BLANK));
         this.hand.push(new Card(CARD_TYPE.BLANK));
         this.hand.push(new Card(CARD_TYPE.SKILL));
         this.hand.push(new Card(CARD_TYPE.JOKER));
         this.hand.push(new Card(CARD_TYPE.SPELL_BREAK));
 
-        // 帯電（ボマーJOKER）チェック
-        let taidenIdx = this.statusList.findIndex(s => s.name === '帯電');
-        if (taidenIdx !== -1) {
-            ui.print(`⚡ [帯電] 手札の数値が13になる`);
+        // ボマー: 帯電チェック
+        const chargeIdx = this.statusList.findIndex(s => s.name === '帯電');
+        if (chargeIdx !== -1) {
+            ui.print(`⚡ ${this.name}は帯電している！(全数値13)`);
             this.hand.forEach(c => {
-                if(c.type === CARD_TYPE.BLANK || c.type === CARD_TYPE.SKILL) c.value = 13;
+                if (c.type === CARD_TYPE.BLANK || c.type === CARD_TYPE.SKILL) {
+                    c.value = 13;
+                }
             });
-            this.statusList.splice(taidenIdx, 1);
+            this.statusList.splice(chargeIdx, 1);
         }
 
-        // 麻痺チェック
+        // 魔弾: 麻痺チェック
         let mahiIdx = this.statusList.findIndex(s => s.name === '麻痺');
         if (mahiIdx !== -1) {
             let mahi = this.statusList[mahiIdx];
-            let effectApplied = false;
-            ui.print(`⚡ ${this.name}は麻痺している (威力${mahi.val1})`);
+            ui.print(`⚡ ${this.name}は麻痺している (数値-${mahi.val1})`);
             this.hand.forEach(c => {
                 if (c.type === CARD_TYPE.BLANK || c.type === CARD_TYPE.SKILL) {
-                    let oldVal = c.value;
-                    c.value = Math.max(2, c.value - mahi.val1);
-                    if(oldVal !== c.value) effectApplied = true;
+                    c.value = Math.max(1, c.value - mahi.val1);
                 }
             });
-            mahi.val2 -= 1;
-            if (mahi.val2 <= 0) this.statusList.splice(mahiIdx, 1);
+            mahi.val2 -= 1; // ターン経過
         }
     }
     addStatus(ef) {
@@ -343,12 +425,17 @@ class Player {
             if (exist.name === '死毒') exist.val1 += ef.val1;
             else if (exist.name === '負傷') { exist.val1 += ef.val1; exist.val2 += ef.val2; }
             else if (exist.name === '蝶') { exist.val1 += ef.val1; exist.val2 += ef.val2; ui.print(`  > 蝶が群れを成した (威${exist.val1}/残${exist.val2})`); }
-            else if (exist.name === '魔弾') { exist.val1 += ef.val1; if(exist.val1 < 0) exist.val1 = 0; if(exist.val1 > 7) exist.val1 = 7; ui.print(`  > 魔弾装填数: ${exist.val1}`); }
+            else if (exist.name === '威力増加') { exist.val1 = ef.val1; exist.val2 = ef.val2; }
+            else if (exist.name === '魔弾') { 
+                exist.val1 += ef.val1; 
+                if(exist.val1 < 0) exist.val1 = 0;
+                if(exist.val1 > 7) exist.val1 = 7; // 最大7発
+                ui.print(`  > 魔弾装填数: ${exist.val1}`);
+            }
             else if (exist.name === '黒炎') { exist.val1 += ef.val1; }
             else if (exist.name === '麻痺') { exist.val1 = Math.max(exist.val1, ef.val1); exist.val2 += ef.val2; }
-            else if (exist.name === '威力増加') { exist.val1 = Math.max(exist.val1, ef.val1); exist.val2 += ef.val2; }
-            else if (exist.name === '帯電') { /* 重複無視 */ }
         } else {
+            // 魔弾は0以下なら追加しない(削除済みとみなす)が、初期追加時は通す
             if (ef.name === '魔弾' && ef.val1 <= 0) return;
             this.statusList.push(ef);
         }
@@ -356,17 +443,18 @@ class Player {
     receiveDamage(amount, source) {
         let finalAmount = amount;
         
-        // 1. 攻撃側のバフ（威力増加など）を適用
-        if (source && source.statusList) {
-            source.statusList.forEach(s => {
-                if(s.onDealDamage) finalAmount = s.onDealDamage(source, finalAmount);
+        // 攻撃側のバフ処理
+        if (source) {
+            source.statusList.forEach(s => { 
+                if(s.onDealDamage) finalAmount = s.onDealDamage(source, finalAmount); 
             });
         }
 
-        // 2. 防御側のバフ・デバフを適用
+        // 防御側のデバフ処理
         [...this.statusList].forEach(s => { finalAmount = s.onTakeDamage(this, finalAmount, source); });
         
         this.statusList = this.statusList.filter(s => !s.isExpired());
+        
         if(finalAmount < 0) finalAmount = 0;
         this.hp -= finalAmount; if (this.hp < 0) this.hp = 0;
     }
@@ -392,9 +480,29 @@ class Game {
         ui.print(`⚔️ バトル判定...`);
         await ui.wait(800);
 
+        // JKP/魔弾消費処理
+        if (c1.type === CARD_TYPE.JOKER) {
+             if (this.p1.charData.id === 'madan') {
+                // 魔弾はJokerEffect内で消費処理
+             } else {
+                ui.print(`${this.p1.name}はJKPを消費!`);
+                this.p1.jkp -= this.p1.charData.jkpCost;
+             }
+        }
+        if (c2.type === CARD_TYPE.JOKER) {
+             if (this.p2.charData.id === 'madan') {
+                // 魔弾はJokerEffect内で消費処理
+             } else {
+                ui.print(`${this.p2.name}はJKPを消費!`);
+                this.p2.jkp -= this.p2.charData.jkpCost;
+             }
+        }
+        ui.updateStatus(this.p1, this.p2);
+
         let winner = null;
         let p1BreakFail = false; let p2BreakFail = false;
 
+        // 特殊判定
         if (c1.type === CARD_TYPE.SPELL_BREAK && c2.type === CARD_TYPE.JOKER) winner = this.p1;
         else if (c2.type === CARD_TYPE.SPELL_BREAK && c1.type === CARD_TYPE.JOKER) winner = this.p2;
         else if (c1.type === CARD_TYPE.SPELL_BREAK) { winner = this.p2; p1BreakFail = true; }
@@ -403,29 +511,25 @@ class Game {
             ui.print("⚡ 双方の奥義が激突！", 'c-sys');
             this.applyCardEffect(this.p1, this.p2, c1);
             this.applyCardEffect(this.p2, this.p1, c2);
-            return;
+            return; // 両者発動して終了
         }
         else {
             if (c1.value > c2.value) winner = this.p1;
             else if (c2.value > c1.value) winner = this.p2;
             else {
-                // 数値が同じ場合
-                if (c1.value === c2.value) {
-                    // ボマー(神速)判定
-                    const p1IsBomber = this.p1.charData.id === 'bomber';
-                    const p2IsBomber = this.p2.charData.id === 'bomber';
-                    
-                    if (p1IsBomber && !p2IsBomber) { ui.print("💨 [神速] 同値勝利!", 'c-p1'); winner = this.p1; }
-                    else if (!p1IsBomber && p2IsBomber) { ui.print("💨 [神速] 同値勝利!", 'c-p2'); winner = this.p2; }
-                    else {
-                        // 両方ボマーまたは両方違う場合は防御判定へ
-                        const p1Def = (c1.mode === CARD_MODE.DEFENSE);
-                        const p2Def = (c2.mode === CARD_MODE.DEFENSE);
-                        if (p1Def && !p2Def) winner = this.p1;
-                        else if (!p1Def && p2Def) winner = this.p2;
-                    }
+                // 数値が同じ場合 (ドロー判定)
+                // ★ボマーのパッシブ「神速」: 同値なら勝利
+                const p1IsBomber = this.p1.charData.id === 'bomber';
+                const p2IsBomber = this.p2.charData.id === 'bomber';
+
+                if (p1IsBomber && !p2IsBomber) {
+                    ui.print(`🧨 [神速] ボマーは同値を制する!`);
+                    winner = this.p1;
+                } else if (!p1IsBomber && p2IsBomber) {
+                    ui.print(`🧨 [神速] ボマーは同値を制する!`);
+                    winner = this.p2;
                 } else {
-                    // 数値は違うがここに来るケースはないはずだが念のため
+                    // 通常のドロー判定（防御優先）
                     const p1Def = (c1.mode === CARD_MODE.DEFENSE);
                     const p2Def = (c2.mode === CARD_MODE.DEFENSE);
                     if (p1Def && !p2Def) winner = this.p1;
@@ -441,9 +545,12 @@ class Game {
             const winCard = (winner === this.p1) ? c1 : c2;
             ui.print(`🏅 勝者: ${winner.name}`, 'c-sys');
             if (winCard.type === CARD_TYPE.SKILL) winner.sc = winner.charData.scMax;
+            
+            // パッシブ(防御時など: 魔弾の装填はここ)
             if (winCard.mode === CARD_MODE.DEFENSE && winner.charData.passive) {
                 winner.charData.passive(winner, 'defense_win', { opponent: loser, card: winCard });
             }
+
             this.applyCardEffect(winner, loser, winCard);
         } else {
             ui.print("Draw (引き分け)", 'c-sys');
@@ -461,22 +568,14 @@ class Game {
                 } else ui.print(`🛡️ 防御成功`);
                 break;
             case CARD_TYPE.SKILL: winner.charData.skillEffect(winner, loser, card.value); break;
-            case CARD_TYPE.JOKER: 
-                if (winner.charData.id === 'madan') {
-                    let bullets = getStatusVal(winner, '魔弾');
-                    winner.jkp -= bullets;
-                } else {
-                    winner.jkp -= winner.charData.jkpCost; 
-                }
-                winner.charData.jokerEffect(winner, loser); 
-                break;
+            case CARD_TYPE.JOKER: winner.charData.jokerEffect(winner, loser); break;
             case CARD_TYPE.SPELL_BREAK: ui.print(`✨ スペルブレイク成功`); break;
         }
     }
 }
 
 // ==========================================
-// GUI
+// GUI制御
 // ==========================================
 const ui = {
     logs: document.getElementById('logs'),
@@ -492,19 +591,19 @@ const ui = {
         const setWidth = (id, percent) => document.getElementById(id).style.width = percent + '%';
         const getStatusTxt = (list) => list.map(s => {
             if(s.name === 'ブレイク反動') return `⚡反動`;
+            if(s.name === '帯電') return `⚡帯電`;
+            if(s.name === '威力増加') return `💪増強(${s.val1}/${s.val2})`;
             if(s.name === '蝶') return `🦋蝶(威${s.val1}/残${s.val2})`;
             if(s.name === '魔弾') return `🔫魔弾(${s.val1})`;
             if(s.name === '黒炎') return `🔥黒炎(${s.val1})`;
             if(s.name === '麻痺') return `⚡麻痺(威${s.val1}/残${s.val2})`;
-            if(s.name === '威力増加') return `💪威力増(威${s.val1}/残${s.val2})`;
-            if(s.name === '帯電') return `⚡帯電`;
             return s.name === '負傷' ? `🩸負傷(威${s.val1}/残${s.val2})` : `☠️死毒(${s.val1})`;
         }).join(' ');
 
         const getJkpText = (p) => {
              if (p.charData.id === 'madan') {
                  let bullets = getStatusVal(p, '魔弾');
-                 return `${p.jkp} / ${bullets}(魔弾数)`;
+                 return `${p.jkp} / ${bullets}(弾数)`;
              }
              return `${p.jkp} / ${p.charData.jkpCost}`;
         };
@@ -540,8 +639,9 @@ const ui = {
             let isPlayable = true;
             if(card.type === CARD_TYPE.JOKER) {
                 if (player.charData.id === 'madan') {
+                    // 魔弾は弾数が1以上ないと撃てない、あるいはJKPコストは0
                     let bullets = getStatusVal(player, '魔弾');
-                    if (bullets === 0 || player.jkp < bullets) isPlayable = false;
+                    if (bullets === 0) isPlayable = false;
                 } else {
                     if (player.jkp < player.charData.jkpCost) isPlayable = false;
                 }
@@ -596,6 +696,8 @@ function initCharSelect() {
 }
 
 function joinGame(charKey) {
+    startBGM();
+
     myCharId = charKey;
     document.getElementById('char-list').style.display = 'none';
     document.getElementById('status-msg').style.display = 'none';
@@ -616,6 +718,7 @@ socket.on('opponent_left', () => { alert('対戦相手が切断しました'); l
 
 socket.on('opponent_move', (data) => {
     opponentMoveMailbox[data.turn] = data;
+    console.log("Received opponent move for turn", data.turn);
 });
 
 async function startGame() {
